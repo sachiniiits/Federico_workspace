@@ -15,7 +15,8 @@ import { toast } from '../../components/feedback/feedback.js';
 import { formatCurrency, formatDate } from './homHelpers.js';
 import PostServiceModal from './PostServiceModal.jsx';
 import BillingDetailModal from './BillingDetailModal.jsx';
-import '../../styles/hom/billing.css';
+import { usePageStyles } from '../../hooks/usePageStyles.js';
+import billingCss from '../../styles/hom/billing.css?inline';
 
 function ledgerStatusVariant(status) {
   if (status === 'PAID') return 'success';
@@ -26,6 +27,7 @@ function ledgerStatusVariant(status) {
 
 /** Ported from HOM/screen-05-billing.html + billing.js. */
 export default function HomBillingPage() {
+  usePageStyles(billingCss);
   useDocumentTitle('Billing Ledger | Federico Hospital HOM');
   const navigate = useNavigate();
   const uhidParam = useSearchParam('uhid');

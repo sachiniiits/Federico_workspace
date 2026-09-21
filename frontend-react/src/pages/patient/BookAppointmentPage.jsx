@@ -16,7 +16,8 @@ import {
   countBookedByTime,
   slotState,
 } from './slotHelpers.js';
-import '../../styles/patient/patient-book-appointment.css';
+import { usePageStyles } from '../../hooks/usePageStyles.js';
+import patientBookAppointmentCss from '../../styles/patient/patient-book-appointment.css?inline';
 
 const TODAY = new Date().toISOString().split('T')[0];
 
@@ -27,6 +28,7 @@ const DEFAULT_ERRORS = {
 };
 
 export default function BookAppointmentPage() {
+  usePageStyles(patientBookAppointmentCss);
   useDocumentTitle('Book Appointment – Federico Cloud');
   const navigate = useNavigate();
   const { profile, doctors, appointments, addAppointment } = usePatientStore();

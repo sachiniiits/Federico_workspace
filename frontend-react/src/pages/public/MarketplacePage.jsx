@@ -5,7 +5,8 @@ import { Link } from 'react-router-dom';
 import { api } from '../../api/index.js';
 import { useApi } from '../../hooks/useApi.js';
 import { toast } from '../../components/feedback/feedback.js';
-import '../../styles/marketplace/marketplace-page.css';
+import { usePageStyles } from '../../hooks/usePageStyles.js';
+import marketplacePageCss from '../../styles/marketplace/marketplace-page.css?inline';
 import { useDocumentTitle } from '../../hooks/useDocumentTitle.js';
 
 /**
@@ -95,6 +96,7 @@ function OrgCard({ org }) {
 }
 
 export default function MarketplacePage() {
+  usePageStyles(marketplacePageCss);
   useDocumentTitle('Federico — Find a Hospital');
   const [query, setQuery] = useState('');
   const [emergencyOnly, setEmergencyOnly] = useState(false);

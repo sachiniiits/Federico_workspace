@@ -9,7 +9,8 @@ import { toast } from '../../components/feedback/feedback.js';
 import { inr, statusChipClass } from './platformHelpers.js';
 import ProvisionDialog from './ProvisionDialog.jsx';
 import OrgDetailDialog from './OrgDetailDialog.jsx';
-import '../../styles/platform/platform.css';
+import { usePageStyles } from '../../hooks/usePageStyles.js';
+import platformCss from '../../styles/platform/platform.css?inline';
 
 /**
  * Ported from platform/platform-dashboard.html + platform-dashboard.js.
@@ -338,6 +339,7 @@ function RatesTab({ rates, baseFee, setRates, setBaseFee, onSave }) {
 }
 
 export default function PlatformDashboardPage() {
+  usePageStyles(platformCss);
   useDocumentTitle('Federico Platform — Super User Dashboard');
   const navigate = useNavigate();
   const { session, logout } = useSession();

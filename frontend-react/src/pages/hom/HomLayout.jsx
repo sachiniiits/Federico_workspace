@@ -3,7 +3,8 @@
 import { Outlet } from 'react-router-dom';
 import SharedNav from '../../components/layout/SharedNav.jsx';
 import { useSession } from '../../auth/useSession.js';
-import '../../styles/hom/global.css';
+import { usePageStyles } from '../../hooks/usePageStyles.js';
+import globalCss from '../../styles/hom/global.css?inline';
 
 /** Ported from HOM/shared-nav.js. Same five links, same module gates. */
 const LINKS = [
@@ -15,6 +16,7 @@ const LINKS = [
 ];
 
 export default function HomLayout() {
+  usePageStyles(globalCss);
   const { session } = useSession();
   const hospitalName =
     session?.tenant?.hospital_name || session?.tenant?.organization_name || 'City General Hospital';

@@ -19,7 +19,8 @@ import {
   pastVisits,
   latestPastAppointment,
 } from './patientDashboardHelpers.jsx';
-import '../../styles/patient/patient-dashboard.css';
+import { usePageStyles } from '../../hooks/usePageStyles.js';
+import patientDashboardCss from '../../styles/patient/patient-dashboard.css?inline';
 
 const NOTIFICATION_COLORS = {
   success: '#10b981',
@@ -29,6 +30,7 @@ const NOTIFICATION_COLORS = {
 };
 
 export default function DashboardPage() {
+  usePageStyles(patientDashboardCss);
   useDocumentTitle('Patient Dashboard');
   const navigate = useNavigate();
   const {

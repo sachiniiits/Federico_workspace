@@ -6,7 +6,8 @@ import { api } from '../../api/index.js';
 import { useSession } from '../../auth/useSession.js';
 import { useSearchParam } from '../../hooks/useSearchParam.js';
 import { toast } from '../../components/feedback/feedback.js';
-import '../../styles/signup/signup-page.css';
+import { usePageStyles } from '../../hooks/usePageStyles.js';
+import signupPageCss from '../../styles/signup/signup-page.css?inline';
 import { useDocumentTitle } from '../../hooks/useDocumentTitle.js';
 
 /**
@@ -20,6 +21,7 @@ import { useDocumentTitle } from '../../hooks/useDocumentTitle.js';
 const showToast = (message, type = 'info') => toast(message, type === 'warn' ? 'warning' : type);
 
 export default function SignupPage() {
+  usePageStyles(signupPageCss);
   useDocumentTitle('Federico Signup');
   const navigate = useNavigate();
   const { signupPatient } = useSession();

@@ -10,7 +10,8 @@ import Badge from '../../components/ui/Badge.jsx';
 import Button from '../../components/ui/Button.jsx';
 import { statusLabel, formatDateTime, joinPreRequestsWithPatients } from './homHelpers.js';
 import AdmissionRequestModal from './AdmissionRequestModal.jsx';
-import '../../styles/hom/dashboard.css';
+import { usePageStyles } from '../../hooks/usePageStyles.js';
+import dashboardCss from '../../styles/hom/dashboard.css?inline';
 
 /**
  * Ported from HOM/screen-01-dashboard.html + dashboard.js.
@@ -94,6 +95,7 @@ function timeAgo(dateString) {
 }
 
 export default function HomDashboardPage() {
+  usePageStyles(dashboardCss);
   useDocumentTitle('Dashboard | Federico Hospital HOM');
   const { actor } = useSession();
   const [selectedBedRequestId, setSelectedBedRequestId] = useState(null);

@@ -15,7 +15,8 @@ import {
   parseCoverage,
   capitalize,
 } from './profileFields.js';
-import '../../styles/patient/patient-profile.css';
+import { usePageStyles } from '../../hooks/usePageStyles.js';
+import patientProfileCss from '../../styles/patient/patient-profile.css?inline';
 
 const BLOOD_GROUPS = ['A+', 'A-', 'B+', 'B-', 'O+', 'O-', 'AB+', 'AB-'];
 
@@ -81,6 +82,7 @@ function SectionActions({ section, saveLabel, editing, saving, onCancel, onSave 
 }
 
 export default function ProfilePage() {
+  usePageStyles(patientProfileCss);
   useDocumentTitle('Patient Profile');
   const { profile, updateProfile, updateInsurance } = usePatientStore();
 

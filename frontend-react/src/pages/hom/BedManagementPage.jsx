@@ -11,10 +11,12 @@ import { bedStyle } from './homHelpers.js';
 import { toast } from '../../components/feedback/feedback.js';
 import AssignBedModal from './AssignBedModal.jsx';
 import BedDetailModal from './BedDetailModal.jsx';
-import '../../styles/hom/bed-management.css';
+import { usePageStyles } from '../../hooks/usePageStyles.js';
+import bedManagementCss from '../../styles/hom/bed-management.css?inline';
 
 /** Ported from HOM/screen-02-bed-management.html + beds.js. */
 export default function BedManagementPage() {
+  usePageStyles(bedManagementCss);
   useDocumentTitle('Bed Management | Federico Hospital HOM');
   const navigate = useNavigate();
 

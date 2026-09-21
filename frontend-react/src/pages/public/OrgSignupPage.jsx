@@ -4,7 +4,8 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { api } from '../../api/index.js';
 import { toast } from '../../components/feedback/feedback.js';
-import '../../styles/signup/org-signup.css';
+import { usePageStyles } from '../../hooks/usePageStyles.js';
+import orgSignupCss from '../../styles/signup/org-signup.css?inline';
 import { useDocumentTitle } from '../../hooks/useDocumentTitle.js';
 
 const TOTAL_STEPS = 4;
@@ -47,6 +48,7 @@ const ALL_MODULES = [
  * page never did.
  */
 export default function OrgSignupPage() {
+  usePageStyles(orgSignupCss);
   useDocumentTitle('Federico — Hospital Chain Onboarding & Provisioning');
   const navigate = useNavigate();
   const [step, setStep] = useState(1);

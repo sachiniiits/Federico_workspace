@@ -3,7 +3,8 @@
 import { Outlet } from 'react-router-dom';
 import SharedNav from '../../components/layout/SharedNav.jsx';
 import { useSession } from '../../auth/useSession.js';
-import '../../styles/admin/admin.css';
+import { usePageStyles } from '../../hooks/usePageStyles.js';
+import adminCss from '../../styles/admin/admin.css?inline';
 
 /**
  * Ported from Admin/shared-nav.js. Link order and module gates are unchanged -
@@ -18,6 +19,7 @@ const LINKS = [
 ];
 
 export default function AdminLayout() {
+  usePageStyles(adminCss);
   const { tenant } = useSession();
   return (
     <>

@@ -7,7 +7,8 @@ import { toast, selectOne } from '../../components/feedback/feedback.js';
 import DocumentRow from './DocumentRow.jsx';
 import BillDetailsModal from './BillDetailsModal.jsx';
 import { openInvoiceDigitalCopy, openBillingDigitalCopy } from './patientInvoiceCopy.js';
-import '../../styles/patient/patient-billing.css';
+import { usePageStyles } from '../../hooks/usePageStyles.js';
+import patientBillingCss from '../../styles/patient/patient-billing.css?inline';
 
 const TABS = [
   { section: 'invoices', label: 'Itemized Invoices' },
@@ -25,6 +26,7 @@ function EmptySection({ message }) {
 }
 
 export default function BillingPage() {
+  usePageStyles(patientBillingCss);
   useDocumentTitle('My Bills & Receipts – Federico Hospital Portal');
   const { profile, bills, visits, billingSections, getBillingDocumentByRef, payBill } =
     usePatientStore();

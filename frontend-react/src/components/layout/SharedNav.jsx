@@ -5,7 +5,8 @@ import { NavLink, useNavigate } from 'react-router-dom';
 import { useSession } from '../../auth/useSession.js';
 import ModuleLock from './ModuleLock.jsx';
 import { LOGIN_PATH } from '../../auth/actorHome.js';
-import './SharedNav.css';
+import { usePageStyles } from '../../hooks/usePageStyles.js';
+import sharedNavCss from './SharedNav.css?inline';
 
 /**
  * Ported from shared/shared-nav.js#renderNavbar, which built the whole bar -
@@ -17,6 +18,10 @@ import './SharedNav.css';
  * [data-requires-module] DOM sweep rbac.js ran after the nav was injected.
  */
 export default function SharedNav({ roleName = 'Staff', brandName = 'Federico', hospitalName, links = [] }) {
+  // shared-nav.js injected this <style> only on the pages that rendered the
+  // navbar, and .nav-link / .nav-links collide with the PRE and Patient
+  // stylesheets, so it has to come and go with the navbar.
+  usePageStyles(sharedNavCss);
   const navigate = useNavigate();
   const { logout } = useSession();
   const [menuOpen, setMenuOpen] = useState(false);

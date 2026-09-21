@@ -1,7 +1,8 @@
 'use strict';
 
 import { useNavigate } from 'react-router-dom';
-import '../../styles/landing/landing-page.css';
+import { usePageStyles } from '../../hooks/usePageStyles.js';
+import landingPageCss from '../../styles/landing/landing-page.css?inline';
 import { useDocumentTitle } from '../../hooks/useDocumentTitle.js';
 
 /**
@@ -12,6 +13,7 @@ import { useDocumentTitle } from '../../hooks/useDocumentTitle.js';
  * through the router - same destinations (DEC-1).
  */
 export default function LandingPage() {
+  usePageStyles(landingPageCss);
   useDocumentTitle('Federico Landing Page');
   const navigate = useNavigate();
 

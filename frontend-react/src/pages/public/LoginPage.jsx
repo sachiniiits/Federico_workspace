@@ -8,7 +8,8 @@ import { useSearchParam } from '../../hooks/useSearchParam.js';
 import { mockAccountsFor } from '../../lib/roleProfiles.js';
 import { getActorHome } from '../../auth/actorHome.js';
 import { toast } from '../../components/feedback/feedback.js';
-import '../../styles/login/login-page.css';
+import { usePageStyles } from '../../hooks/usePageStyles.js';
+import loginPageCss from '../../styles/login/login-page.css?inline';
 import { useDocumentTitle } from '../../hooks/useDocumentTitle.js';
 
 const ROLES = ['Patient', 'PRE', 'HOM', 'FA', 'Admin'];
@@ -22,6 +23,7 @@ const REMEMBER_KEY = 'FedericoRememberMe';
  * the click-to-autofill demo panel, and all three error strings.
  */
 export default function LoginPage() {
+  usePageStyles(loginPageCss);
   useDocumentTitle('Federico — Sign In');
   const navigate = useNavigate();
   const { authenticate, getLastAuthError } = useSession();

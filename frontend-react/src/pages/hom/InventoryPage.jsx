@@ -13,13 +13,15 @@ import { formatCurrency, formatDate } from './homHelpers.js';
 import { computeItemStatus, itemCost, serviceForItem, findPatientByUhid, validateUsageDetails } from './inventoryHelpers.js';
 import LogUsageModal from './LogUsageModal.jsx';
 import RestockModal from './RestockModal.jsx';
-import '../../styles/hom/inventory.css';
+import { usePageStyles } from '../../hooks/usePageStyles.js';
+import inventoryCss from '../../styles/hom/inventory.css?inline';
 
 /**
  * Ported from HOM/screen-04-inventory.html + inventory.js - the densest screen
  * in the app (16 window globals and 23 inline handlers in the original).
  */
 export default function InventoryPage() {
+  usePageStyles(inventoryCss);
   useDocumentTitle('Inventory | Federico Hospital HOM');
 
   const [filters, setFilters] = useState({ search: '', category: '', status: '' });

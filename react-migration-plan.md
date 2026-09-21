@@ -1171,6 +1171,15 @@ page's stylesheet at a time, appended after the three shared ones.
 
 - [x] `src/hooks/usePageStyles.js`
 - [x] Convert all 21 per-portal stylesheet imports to `?inline` + `usePageStyles`
+- [x] `components/layout/SharedNav.css` too - `shared-nav.js` injected its
+      `<style>` only on the pages that rendered the navbar, and its `.nav-link`
+      / `.nav-links` rules collide with the PRE and Patient stylesheets
+- `components/layout/ModuleLock.css` stays a plain import: `rbac.js#lockElement`
+  injected `#federico-module-lock-styles` on any page, so it is genuinely global
+- Re-verified after the change: one page-style tag live across all four Patient
+  routes (profile fields back to 47px, matched-rule list identical to the legacy
+  page), three on PRE (base + layout + components) and three on HOM (global +
+  dashboard + SharedNav); PRE and HOM both still render correctly
 - Commit: `load portal stylesheets per route instead of accumulating them`
 
 Note for §6: the Definition of Done item "`npm run build` emits separate CSS

@@ -14,12 +14,14 @@ import { toast } from '../../components/feedback/feedback.js';
 import { statusLabel, statusVariant, daysSince, formatDate, joinPreRequestsWithPatients } from './homHelpers.js';
 import PatientDetailModal from './PatientDetailModal.jsx';
 import DischargeModal from './DischargeModal.jsx';
-import '../../styles/hom/patient-flow.css';
+import { usePageStyles } from '../../hooks/usePageStyles.js';
+import patientFlowCss from '../../styles/hom/patient-flow.css?inline';
 
 const FLOW_STATUSES = ['ADMITTED', 'DISCHARGE_REQUESTED', 'DISCHARGE_APPROVED', 'DISCHARGED'];
 
 /** Ported from HOM/screen-03-patient-flow.html + patient-flow.js. */
 export default function PatientFlowPage() {
+  usePageStyles(patientFlowCss);
   useDocumentTitle('Patient Flow | Federico Hospital HOM');
   const navigate = useNavigate();
   const uhidParam = useSearchParam('uhid');

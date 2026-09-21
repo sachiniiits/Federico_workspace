@@ -4,9 +4,10 @@ import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { useSession } from '../../auth/useSession.js';
 import ModuleLock from '../../components/layout/ModuleLock.jsx';
 import { LOGIN_PATH } from '../../auth/actorHome.js';
-import '../../styles/pre/base.css';
-import '../../styles/pre/layout.css';
-import '../../styles/pre/components.css';
+import { usePageStyles } from '../../hooks/usePageStyles.js';
+import baseCss from '../../styles/pre/base.css?inline';
+import layoutCss from '../../styles/pre/layout.css?inline';
+import componentsCss from '../../styles/pre/components.css?inline';
 
 /**
  * The PRE navbar, which every one of the ten PRE pages repeated verbatim in its
@@ -26,6 +27,7 @@ const LINKS = [
 ];
 
 export default function PreLayout() {
+  usePageStyles(baseCss, layoutCss, componentsCss);
   const navigate = useNavigate();
   const { tenant, logout } = useSession();
 

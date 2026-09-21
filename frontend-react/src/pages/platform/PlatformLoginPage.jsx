@@ -6,7 +6,8 @@ import { api } from '../../api/index.js';
 import { useSession } from '../../auth/useSession.js';
 import { useDocumentTitle } from '../../hooks/useDocumentTitle.js';
 import { toast } from '../../components/feedback/feedback.js';
-import '../../styles/platform/platform.css';
+import { usePageStyles } from '../../hooks/usePageStyles.js';
+import platformCss from '../../styles/platform/platform.css?inline';
 
 const DEMO_EMAIL = 'platform@federico.com';
 const DEMO_PASSWORD = 'Federico@Platform123';
@@ -19,6 +20,7 @@ const DEMO_PASSWORD = 'Federico@Platform123';
  * RequireModule never looks at.
  */
 export default function PlatformLoginPage() {
+  usePageStyles(platformCss);
   useDocumentTitle('Federico Platform — Sign In');
   const navigate = useNavigate();
   const { setSession, isPlatformUser } = useSession();
