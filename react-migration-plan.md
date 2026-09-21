@@ -876,14 +876,35 @@ Two deviations from the step list as written:
 
 ### Phase 1 — API client and session
 
-- [ ] Port `shared/api-client.js` → `src/api/client.js`, `session.js`, `errors.js`, `endpoints/*.js` (14), `endpoints/index.js`
-- [ ] Port `shared/formatters.js`, `constants.js`, `sanitizer.js`, `insurance.js` → `src/lib/`
-- [ ] Add `src/lib/phone.js`, `src/lib/csv.js`, `src/lib/printDocument.js`
-- [ ] Build `src/auth/SessionContext.jsx`, `useSession.js`, `src/lib/roleProfiles.js`, `src/lib/entitlements.js`
+- [x] Port `shared/api-client.js` → `src/api/client.js`, `session.js`, `errors.js`, `endpoints/*.js` (14), `endpoints/index.js`
+- [x] Port `shared/formatters.js`, `constants.js`, `sanitizer.js`, `insurance.js` → `src/lib/`
+- [x] Add `src/lib/phone.js`, `src/lib/csv.js`, `src/lib/printDocument.js`
+- [x] Build `src/auth/SessionContext.jsx`, `useSession.js`, `src/lib/roleProfiles.js`, `src/lib/entitlements.js`
 - Files created: ~26 under `src/api/`, `src/lib/`, `src/auth/`
 - Files deleted: none yet
 - Verify (browser console on the Vite page): `api.marketplace.organizations()` returns the org array; `api.auth.login('admin@hosp.com','Hom@123',1)` returns a token and writes `sessionStorage["FedericoSession"]`; `api.patients.list()` with a bad token throws and clears the session; stopping the backend produces exactly `"Cannot reach the server. Is the backend running on http://localhost:3000?"`
 - Commit: `port api client and session handling to es modules`
+
+**Phase 1 outcome - done.** All seven contract checks passed against the live backend
+(2 orgs listed, HOM login writes `sessionStorage['FedericoSession']`, 56 beds over an
+authed call, `Invalid email or password` verbatim on a bad password, 401 clears the
+session, the validator's array message joins with `", "`, and an unreachable host yields
+the exact offline string with `status === 0`).
+
+Two things the verification turned up:
+
+1. **A real bug in the port, caught and fixed.** `getSession()` initially returned a
+   cached snapshot. The legacy `shared/api-client.js#getSession` re-read `sessionStorage`
+   on every call, and `api/client.js` consults it on every request, so a cached value
+   could go stale. The cache now serves only `getSnapshot()` for `useSyncExternalStore`;
+   `getSession()` reads through.
+2. **`authorize()` returns 403, not 401, for an unauthenticated caller**
+   (`back-end/src/middleware/actorAccess.js`). Only `requireSession` routes such as
+   `/auth/me` return 401. So the "401 clears the session" path fires on far fewer routes
+   than it might appear. That is existing backend behaviour, reproduced unchanged.
+   Worth knowing: `GET /patient` with no credentials at all returns 403 rather than 401,
+   which is a backend authorization question, not a frontend one, and is out of scope
+   here under constraint 1.
 
 ### Phase 2 — Feedback, UI primitives, routing skeleton
 
