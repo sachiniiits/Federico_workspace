@@ -1190,13 +1190,47 @@ stylesheets are still emitted as one CSS asset from `main.jsx`.
 
 ### Phase 9 — FA portal
 
-- [ ] `FaLayout.jsx` + `useHashRoute`
-- [ ] `faHelpers.js` + `faActions.js`
-- [ ] `DashboardView.jsx`, `ChargesView.jsx`, `LedgerView.jsx`, `EodBillingView.jsx`, `DischargeView.jsx`, `ReceiptsView.jsx`, `PatientPicker.jsx`
+- [x] `FaLayout.jsx` + `useHashRoute`
+- [x] `faHelpers.js` + `faActions.js`
+- [x] `DashboardView.jsx`, `ChargesView.jsx`, `LedgerView.jsx`, `EodBillingView.jsx`, `DischargeView.jsx`, `ReceiptsView.jsx`, `PatientPicker.jsx`
 - Files created: ~10 under `src/pages/fa/`
 - Files deleted: `front-end/FA/` (9 files)
 - Verify: all six hash routes load and the nav highlights correctly; back/forward through hashes works; create a ledger from the dashboard; approve a HOM-submitted charge on Charges and see it land in the ledger; add a manual charge; send an EOD bill (confirm dialog copy); switch patients via the picker (`window.currentAdmissionId` equivalent) and confirm the ledger follows; record a cash payment; generate a discharge summary and confirm the print window opens and auto-prints; receipts search + mode filter; reload directly on `#/receipts`
 - Commit: `port fa portal to react`
+
+**Phase 9 outcome - done.** 15 files under `src/pages/fa/`. Extra to the plan:
+`FaContext.jsx` (what `window.currentAdmissionId` and `window.render()` used to
+be), `ViewFrame.jsx` (render()'s Loading / error cards), `StatusBadge.jsx`,
+`faStyles.js` (the inline `style="…"` attributes app.js repeated on every table
+cell) and `useSelectedRow.js` (the `if (!window.currentAdmissionId && rows.length)`
+default that three views each opened with).
+
+Verified side by side against the legacy FA app, signed in as `farah.fa@hosp.com`:
+
+- All six hash routes load with matching headings, row counts and active nav
+  pill; the Ledger view is pixel-identical in a side-by-side screenshot.
+- `#/receipts` survives a full page reload as a deep link, and browser back and
+  forward move between `#/ledger` and `#/eod` correctly.
+- Writes exercised end to end: switch patient through the picker (ledger
+  follows), post a manual charge (total went 22,000 -> 22,500), approve a
+  HOM-submitted charge (moved from Pending to In Ledger with the full toast
+  text), send an EOD bill (confirm dialog copy verbatim, picker label flipped to
+  `[EOD Sent]`), and record a cash payment.
+- The receipts search and payment-mode filter return identical visible-row
+  counts to `filterReceipts()` for every case tried (9 / 1 / 3 / 2 / 1).
+- All three print documents were captured by stubbing `window.open` and diffed
+  line by line: the discharge summary (4,047 bytes), the discharge + billing
+  summary (4,150 bytes) and the receipt (2,343 bytes) are **byte-identical**.
+- **D6** kept: `addChargeFromForm` still reads `#charge-admission` /
+  `#charge-service` / `#charge-qty`, which no view renders, and nothing calls it.
+- **D7** kept and measured: typing `5000` into `#coverage-override` leaves
+  `#net-payable-preview` at `Rs 26,800`. The value is still read at click time -
+  the cash payment that followed posted 21,800, not 26,800 - which is why the
+  field is uncontrolled rather than wired to the preview.
+- `permissions.js#updateUI` parsed each nav link's `onclick` attribute with a
+  regex to discover its route, and `updateActiveNav` did the same. With real
+  handlers there is nothing to parse; `routeAccess` is identical for all three
+  roles, so the only gate that ever fired was `hasModuleAccess('FA', actor)`.
 
 ### Phase 10 — Cut over and delete the legacy tree
 
