@@ -1096,15 +1096,88 @@ invisible fixes in section 7.
 
 ### Phase 8 — Patient portal
 
-- [ ] `PatientLayout.jsx` + `PatientStoreContext.jsx` + `patientStoreShape.js`
-- [ ] `DashboardPage.jsx` + `AppointmentsModal.jsx` + `VisitsModal.jsx` + `BillsModal.jsx`
-- [ ] `BookAppointmentPage.jsx`
-- [ ] `BillingPage.jsx` + `BillDetailsModal.jsx`
-- [ ] `ProfilePage.jsx`
+- [x] `PatientLayout.jsx` + `PatientStoreContext.jsx` + `patientStoreShape.js`
+- [x] `DashboardPage.jsx` + `AppointmentsModal.jsx` + `VisitsModal.jsx` + `BillsModal.jsx`
+- [x] `BookAppointmentPage.jsx`
+- [x] `BillingPage.jsx` + `BillDetailsModal.jsx`
+- [x] `ProfilePage.jsx`
 - Files created: ~11 under `src/pages/patient/`
 - Files deleted: `front-end/Patient/` (13 files)
 - Verify: dashboard summary cards, appointments table, visits, notifications, bill sidebar and the three document sections match; all three modals open and close; book an appointment with a document attachment and watch slot capacity change (3 per slot); billing — all four tabs, pay a dispatched bill through the `selectOne` picker, print an invoice copy and a receipt copy; profile — edit and save each of the four sections independently, cancel restores, upload both insurance card sides then save, and password change still shows its success message without calling an endpoint
 - Commit: `port patient portal to react`
+
+**Phase 8 outcome - done.** 20 files under `src/pages/patient/`, more than the
+~11 estimated: the shared row/item markup (`AppointmentRows`, `VisitItems`,
+`DocumentRow`, `DocumentGroup`), the two print-document modules and the profile
+form's field tables were each pulled out rather than inlined four times.
+
+Verified side by side against the legacy app (Vite on :5173, the legacy static
+tree on :5500, one backend on :3000), signed in as `arjun.k@hosp.com`:
+
+- Dashboard: summary cards, appointments table, recent visits, PRE updates,
+  profile sidebar, bill sidebar and all three document groups return identical
+  text. All three modals open, close and list the same rows.
+- Booking: same 15 departments, same 18 slots, `2 Left` capacity on the one
+  half-booked slot, same sidebar and summary. Booking a 03:00 PM slot produced
+  reference #30 and both apps then showed the identical new Pending row.
+- Billing: the four KPI cards, the four tabs and all four sections match, and
+  the insurance banner still shows the Self Pay branch for a fully insured
+  patient (**D4** preserved).
+- Profile: field values, edit/cancel/save per section, the live password hint,
+  the insurance card upload and the `View uploaded file · replace` label all
+  match. Password change still toasts success with no endpoint (**D11**).
+- Both printable documents were captured by stubbing `window.open` and diffed
+  line by line against the legacy output: the dashboard digital copy is
+  byte-identical, and the billing copy differs only in the
+  `REC-<Date.now()>` transaction reference, which both apps generate fresh.
+
+Three findings worth recording:
+
+1. `patients.update` does **not** normalise phone numbers (only `create` does),
+   so saving Contact Details with a bare 10-digit alternate phone fails with
+   `alternate_phone must be a valid phone number`. Reproduced identically in
+   the legacy app - carried forward under constraint 1 as **D13**.
+2. `#ins-coverage` offers only Individual / Family / Corporate, but the stored
+   `coverage_type` can be something else (`"Full"` in the seed data). The legacy
+   `input.value = ...` assignment leaves the select showing nothing
+   (`selectedIndex === -1`); a React controlled `<select>` would snap to the
+   first option instead. `NativeSelect` in `ProfilePage.jsx` assigns the value
+   on the node so the blank state is preserved.
+3. The per-page brand subtitles ("Hospital Admin" / "Hospital Portal") are
+   overwritten by `rbac.js#applyTenantBranding` on every Patient page, so the
+   organization name is what a signed-in patient actually sees. `PatientLayout`
+   now does the same, keeping the markup defaults only as the no-tenant
+   fallback.
+
+Verification also exposed a cross-cutting defect in **DEC-5** - see the
+CSS-isolation note below.
+
+### Phase 8a - CSS isolation (correction to DEC-5)
+
+DEC-5 assumed per-route lazy chunks would keep only one portal's stylesheet
+live at a time. They do not: a CSS chunk is injected when its route first loads
+and is **never removed**, so every stylesheet visited in a session stays in the
+cascade. Signing in at `/login/login-page.html` and then opening a Patient page
+left `login-page.css` live; visiting the booking page before the profile page
+left `patient-book-appointment.css` live, and its `.form-group input { height:
+52px }` overrode the profile page's own 47px fields. Confirmed by measurement,
+not inference.
+
+The fix keeps constraint 5 intact - **no stylesheet content is edited**. Each
+per-portal stylesheet is imported with Vite's `?inline` query, which yields its
+text verbatim, and `usePageStyles` appends it to `<head>` on mount and removes
+it on unmount. That reproduces exactly what the legacy `<link>` tags did: one
+page's stylesheet at a time, appended after the three shared ones.
+
+- [x] `src/hooks/usePageStyles.js`
+- [x] Convert all 21 per-portal stylesheet imports to `?inline` + `usePageStyles`
+- Commit: `load portal stylesheets per route instead of accumulating them`
+
+Note for §6: the Definition of Done item "`npm run build` emits separate CSS
+assets per route group" no longer applies to the per-portal files. They now
+travel inside their route's JS chunk as text and are mounted and unmounted with
+it, which is a stronger guarantee than separate `.css` assets. The three shared
+stylesheets are still emitted as one CSS asset from `main.jsx`.
 
 ### Phase 9 — FA portal
 
