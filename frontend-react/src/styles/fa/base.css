@@ -1,0 +1,98 @@
+:root {
+    /* Back-compat aliases kept so template strings in js/app.js (which still
+       reference these names) keep resolving to the Material You tokens
+       defined in shared/design-tokens.css. --primary now points at the MD3
+       purple seed rather than the old charcoal. */
+    --primary: var(--md-primary);
+    --primary-dark: var(--md-primary);
+    --bg-light: var(--color-bg);
+    --transition: all var(--duration-base) var(--ease-standard);
+    --shadow-sm: var(--shadow-1);
+    --shadow-md: var(--shadow-2);
+
+    /* js/app.js references --text-muted extensively but no prior token
+       layer ever defined it — it silently resolved to nothing. Alias it to
+       the MD3 "on-surface-variant" tone so every muted label/caption in the
+       dashboard tables actually renders. */
+    --text-muted: var(--md-on-surface-variant);
+}
+
+/* 1. Global Reset & Body */
+body {
+    background-color: var(--color-bg);
+    font-family: var(--font-body);
+    color: var(--color-fg);
+}
+
+/* 2. Tonal surface cards — Material You elevation via shadow + tonal fill,
+   no border. */
+.card {
+    background: var(--md-surface-container);
+    border-radius: var(--radius-lg);
+    padding: 24px;
+    border: none;
+    box-shadow: var(--shadow-1);
+    transition: box-shadow var(--duration-base) var(--ease-standard), transform var(--duration-base) var(--ease-standard);
+}
+
+.card:hover {
+    box-shadow: var(--shadow-2);
+}
+
+/* 3. Buttons — MD3 filled pill button with a soft state-layer hover. */
+.btn-primary {
+    position: relative;
+    background: var(--md-primary);
+    color: var(--md-on-primary);
+    border: none;
+    padding: 10px 20px;
+    border-radius: var(--radius-full);
+    font-family: var(--font-body);
+    font-weight: 500;
+    font-size: 12px;
+    letter-spacing: var(--tracking-button);
+    text-transform: uppercase;
+    cursor: pointer;
+    box-shadow: none;
+    transition: background-color var(--duration-fast) var(--ease-standard),
+                box-shadow var(--duration-base) var(--ease-standard),
+                transform var(--duration-fast) var(--ease-standard);
+}
+
+.btn-primary:hover {
+    background: color-mix(in srgb, var(--md-primary) 90%, black);
+    box-shadow: var(--shadow-2);
+}
+
+.btn-primary:active { transform: scale(0.97); }
+
+.btn-primary:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* 4. Table Row Hover */
+.data-table tr { transition: background var(--duration-fast) ease; }
+
+.data-table tr:hover { background-color: var(--md-surface-container-low); }
+
+/* 5. Status pill — legacy .status/.status-pending/.status-cleared classes
+   kept functional (in case any older markup still uses them) and restyled
+   to the same pill-chip treatment as the shared .badge component. */
+.status {
+    padding: 4px 12px;
+    border-radius: var(--radius-full);
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    transition: var(--transition);
+}
+
+.status-pending { background: var(--status-warning-bg); color: var(--status-warning-fg); }
+
+.status-cleared { background: var(--status-success-bg); color: var(--status-success-fg); }
+
+/* 6. Navigation Link Hover */
+nav span, nav a { cursor: pointer; transition: color var(--duration-base) var(--ease-standard); }
+
+nav span:hover { color: var(--md-primary); }

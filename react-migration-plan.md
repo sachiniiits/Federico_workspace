@@ -840,17 +840,39 @@ listening on `http://localhost:3000`. Sign-in accounts are in `shared/rbac.js`'s
 
 - [x] `cd codebase/16_Federico && git branch pre-react-backup` — **done**, points at `1708ea7`
 - [x] Work branch `feat/react-implementation` — **done**, already checked out (this replaces the `react-migration` name in §5; see DEC-3)
-- [ ] `npm create vite@latest frontend-react -- --template react`
-- [ ] `cd frontend-react && npm install && npm install react-router-dom`
-- [ ] Replace generated `index.html` with a shell whose `<body>` is `<div id="root"></div>` and **one** `<script type="module" src="/src/main.jsx"></script>`
-- [ ] Delete `src/App.css`, `src/index.css`, `src/assets/react.svg`, `public/vite.svg`
-- [ ] Copy all 21 CSS files into `src/styles/` unchanged (except `admin.css`'s three `@import` lines — see §3)
-- [ ] Create `.env.example` with `VITE_API_URL=http://localhost:3000`
-- [ ] Add a `vite.config.js` SPA fallback for deep `.html` paths; confirm `/HOM/screen-02-bed-management.html` serves the app in dev
-- Files created: `frontend-react/{index.html,package.json,vite.config.js,.env.example}`, `src/{main.jsx,App.jsx,routes.jsx}` (stubs), `src/styles/**` (21 files)
+- [x] `npm create vite@latest frontend-react -- --template react`
+- [x] `cd frontend-react && npm install && npm install react-router-dom`
+- [x] Replace generated `index.html` with a shell whose `<body>` is `<div id="root"></div>` and **one** `<script type="module" src="/src/main.jsx"></script>`
+- [x] Delete the template's demo files
+- [x] Copy all 21 CSS files into `src/styles/` unchanged (except `admin.css`'s three `@import` lines — see §3)
+- [x] Create `.env.example` with `VITE_API_URL=http://localhost:3000`
+- [x] Add a `vite.config.js` SPA fallback for deep `.html` paths; confirm `/HOM/screen-02-bed-management.html` serves the app in dev
+- Files created: `frontend-react/{index.html,package.json,package-lock.json,vite.config.js,.env.example,.gitignore,.oxlintrc.json}`, `src/{main.jsx,App.jsx,routes.jsx}` (stubs), `src/styles/**` (21 files)
 - Files deleted: none
 - Verify: `npm run dev` serves a blank page with no console errors; `npm run build` succeeds
 - Commit: `scaffold vite react app alongside the existing frontend`
+
+**Phase 0 outcome — done.** Toolchain resolved to Node 22.16, Vite 8.3, React 19.2,
+react-router-dom 7.18; `react-router-dom` is the only added runtime dependency (DEC-11).
+`npm run build` succeeds. A hard load of `/HOM/screen-02-bed-management.html` renders the
+app with a clean console. All 21 stylesheets verified: 20 byte-identical to their
+originals, `admin.css` differing by exactly its three `@import` lines (DEC-4), with its
+BOM and CRLF endings preserved so `git diff` shows three deletions and nothing else.
+
+Two deviations from the step list as written:
+
+1. **The current Vite React template ships different demo files** than this plan assumed
+   (`public/favicon.svg`, `public/icons.svg`, `src/assets/hero.png`, `.oxlintrc.json`, a
+   template `README.md`) and no `public/vite.svg`. All demo assets, `src/App.css`,
+   `src/index.css` and the generated `src/App.jsx` were removed; `.oxlintrc.json` and the
+   `lint` script were kept, since a linter is useful and costs nothing.
+2. **`index.html` carries no `Content-Security-Policy` meta tag.** All 34 legacy pages had
+   an identical one. It is omitted here because its `script-src 'self' 'unsafe-inline'`
+   would have to be widened for Vite's dev-time module graph, and a wrong CSP breaks the
+   dev server silently. **Restore an equivalent CSP in Phase 10**, derived from the
+   production build's actual needs, and diff it against the legacy header so the
+   deployed security posture is no weaker than today's. Tracked as an open item, not a
+   silent drop.
 
 ### Phase 1 — API client and session
 
