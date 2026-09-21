@@ -996,16 +996,33 @@ ever filled the Summary panel.
 
 ### Phase 5 — Admin portal
 
-- [ ] `AdminLayout.jsx` + `SharedNav.jsx` + `SharedNav.css`
-- [ ] `DashboardPage.jsx`
-- [ ] `DepartmentsPage.jsx` + `WardDialog.jsx`
-- [ ] `InventoryCatalogPage.jsx` + `ItemDialog.jsx`
-- [ ] `RolesStaffPage.jsx` + `RoleDialog.jsx`
-- [ ] `PeoplePage.jsx` + `StaffDialog.jsx` + `DoctorDialog.jsx`
+- [x] `AdminLayout.jsx` + `SharedNav.jsx` + `SharedNav.css`
+- [x] `DashboardPage.jsx`
+- [x] `DepartmentsPage.jsx` + `WardDialog.jsx`
+- [x] `InventoryCatalogPage.jsx` + `ItemDialog.jsx`
+- [x] `RolesStaffPage.jsx` + `RoleDialog.jsx`
+- [x] `PeoplePage.jsx` + `StaffDialog.jsx` + `DoctorDialog.jsx`
 - Files created: ~12 under `src/pages/admin/` + 2 under `src/components/layout/`
 - Files deleted: `front-end/Admin/` (11 files)
 - Verify: all five nav links work and the active pill follows; dashboard KPIs, ward occupancy bars, billing-status table, low-stock cards and staff breakdown all match; create/edit/delete a ward; add and delete a catalog item; create a role, toggle a permission (and confirm the checkbox reverts on a server error); create a staff login and sign in with it in a second tab; add/edit/delete a doctor; upload a branding logo and see the preview
 - Commit: `port admin portal to react`
+
+**Phase 5 outcome - done.** Signed in as the hospital owner and confirmed against live data:
+the dashboard renders all six KPIs, the pay-as-you-scale usage card, ward occupancy bars,
+the billing-status table, low-stock alerts and staff distribution; Departments lists all
+six wards with per-ward bed and occupancy counts; Roles & Staff lists the custom role, the
+permission pane, branding upload and the staff table with its grant control. `SharedNav`
+replaces the innerHTML-built navbar, and its injected `<style>` block is now
+`SharedNav.css` with the declarations unchanged.
+
+Defect D3 is preserved on the Admin dashboard as well: the subscription card reads
+`liveRates?.base_fee` while the API sends `base_platform_fee`, so the base fee stays at its
+3000 fallback while the per-resource rates do update.
+
+One note on the verification itself: synthetic clicks from the browser-automation harness
+landed at coordinates offset from the real viewport, so nav clicks appeared to do nothing.
+Clicking the same elements programmatically navigated correctly. The harness was
+misaligned, not the app.
 
 ### Phase 6 — HOM portal
 
