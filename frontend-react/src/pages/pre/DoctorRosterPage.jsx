@@ -1,11 +1,170 @@
 'use strict';
 
-/* Placeholder - replaced in this page's phase. */
+import { useState } from 'react';
+import { api } from '../../api/index.js';
+import { useApi } from '../../hooks/useApi.js';
+import { useDocumentTitle } from '../../hooks/useDocumentTitle.js';
+import { to12Hour } from './preHelpers.js';
+
+/**
+ * Ported from PRE/pages/doctor.html + doctor.js.
+ *
+ * Availability status is normalised from free text: anything matching
+ * surgery|busy becomes "In Surgery", unavail|leave|off becomes "Unavailable",
+ * everything else "Available". Duty hours fall back to 09:00 AM - 05:00 PM and
+ * days to "Mon - Sat" when the record has none.
+ */
 export default function DoctorRosterPage() {
+  useDocumentTitle('Doctor Availability – Federico PRE');
+
+  const [query, setQuery] = useState('');
+  const [specFilter, setSpecFilter] = useState('');
+  const [statusFilter, setStatusFilter] = useState('');
+
+  const { data, error } = useApi(async () => {
+    const [doctors, availabilities] = await Promise.all([
+      api.doctors.list().catch(() => []),
+      api.doctors.availabilityAll().catch(() => []),
+    ]);
+
+    const availabilityByDoctor = {};
+    (availabilities || []).forEach((a) => {
+      if (!availabilityByDoctor[a.doctor_id]) availabilityByDoctor[a.doctor_id] = a;
+    });
+
+    return (doctors || []).map((d) => {
+      const avail = availabilityByDoctor[d.doctor_id] || null;
+      const rawStatus = (avail?.status || 'Available').trim();
+      let normalizedStatus = 'Available';
+      if (/surgery|busy/i.test(rawStatus)) normalizedStatus = 'In Surgery';
+      else if (/unavail|leave|off/i.test(rawStatus)) normalizedStatus = 'Unavailable';
+
+      const startTimeFormatted = avail?.start_time ? to12Hour(avail.start_time) : '09:00 AM';
+      const endTimeFormatted = avail?.end_time ? to12Hour(avail.end_time) : '05:00 PM';
+
+      return {
+        ...d,
+        availability: avail,
+        status: normalizedStatus,
+        rawStatus,
+        dutyHours: startTimeFormatted + ' – ' + endTimeFormatted,
+        days: avail?.days || avail?.available_days || 'Mon – Sat',
+      };
+    });
+  }, []);
+
+  const roster = data || [];
+  const specs = Array.from(new Set(roster.map((d) => d.specialization).filter(Boolean))).sort();
+
+  const total = roster.length;
+  const available = roster.filter((d) => d.status === 'Available').length;
+  const unavailable = roster.filter((d) => d.status !== 'Available').length;
+
+  const q = query.trim().toLowerCase();
+  const filtered = roster.filter((d) => {
+    if (specFilter && d.specialization !== specFilter) return false;
+    if (statusFilter && d.status !== statusFilter) return false;
+    if (!q) return true;
+    return (
+      (d.name || '').toLowerCase().includes(q) ||
+      String(d.doctor_id || '').toLowerCase().includes(q) ||
+      (d.specialization || '').toLowerCase().includes(q) ||
+      (d.phone || '').toLowerCase().includes(q)
+    );
+  });
+
+  const chipStyle = { fontSize: 11, padding: '3px 8px', borderRadius: 12 };
+
   return (
-    <main style={{ padding: 24 }}>
-      <h1 style={{ margin: 0 }}>PRE Doctor Roster</h1>
-      <p style={{ color: 'var(--color-muted-fg, #64748b)' }}>Not ported yet.</p>
-    </main>
+    <>
+      <div className="cards">
+        <div className="card">
+          <h3>Total Specialists</h3>
+          <p id="kpi-total-doctors">{total} Doctors</p>
+        </div>
+        <div className="card">
+          <h3>Available for Consultations</h3>
+          <p id="kpi-available-doctors" style={{ color: 'var(--status-success, #15803d)' }}>{available} Available</p>
+        </div>
+        <div className="card">
+          <h3>In Surgery / On Leave</h3>
+          <p id="kpi-unavailable-doctors" style={{ color: 'var(--status-warning-fg, #b45309)' }}>{unavailable} Engaged</p>
+        </div>
+      </div>
+
+      <div className="container">
+        <div className="directory-header">
+          <div className="directory-title-group">
+            <h2>Doctor Availability &amp; Rosters</h2>
+            <p>Review active physician duty hours, consultation slots, and departmental specializations.</p>
+          </div>
+          <div className="directory-toolbar">
+            <input type="text" id="doctorSearchInput" placeholder="Search doctor, dept, ID..." className="directory-search-input"
+              value={query} onChange={(e) => setQuery(e.target.value)} />
+            <select id="filterSpecialization" className="directory-filter-select" value={specFilter} onChange={(e) => setSpecFilter(e.target.value)}>
+              <option value="">All Specializations</option>
+              {specs.map((s) => <option key={s} value={s}>{s}</option>)}
+            </select>
+            <select id="filterStatus" className="directory-filter-select" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
+              <option value="">All Statuses</option>
+              <option value="Available">Available</option>
+              <option value="In Surgery">In Surgery</option>
+              <option value="Unavailable">Unavailable / Off-Duty</option>
+            </select>
+          </div>
+        </div>
+
+        <div className="table-container" style={{ margin: 0 }}>
+          <table>
+            <thead>
+              <tr>
+                <th style={{ textAlign: 'left', padding: '12px 16px' }}>Doctor ID</th>
+                <th style={{ textAlign: 'left', padding: '12px 16px' }}>Doctor Name</th>
+                <th style={{ textAlign: 'left', padding: '12px 16px' }}>Specialization</th>
+                <th style={{ textAlign: 'center', padding: '12px 14px' }}>Consultation Days</th>
+                <th style={{ textAlign: 'center', padding: '12px 14px' }}>Duty Hours</th>
+                <th style={{ textAlign: 'center', padding: '12px 14px' }}>Status</th>
+              </tr>
+            </thead>
+            <tbody id="doctorTable">
+              {error ? (
+                <tr><td colSpan="6" style={{ color: 'var(--status-error)' }}>Could not load doctor roster: {error.message}</td></tr>
+              ) : filtered.length === 0 ? (
+                <tr><td colSpan="6" style={{ textAlign: 'center', padding: 32, color: 'var(--color-muted-fg)' }}>No matching doctors found</td></tr>
+              ) : (
+                filtered.map((d) => {
+                  const badge =
+                    d.status === 'In Surgery' ? (
+                      <span className="status pending" style={{ ...chipStyle, background: '#fef3c7', color: '#b45309', border: '1px solid #fde68a' }}>In Surgery</span>
+                    ) : d.status === 'Unavailable' ? (
+                      <span className="status pending" style={{ ...chipStyle, background: '#f1f5f9', color: '#475569', border: '1px solid #e2e8f0' }}>Off-Duty</span>
+                    ) : (
+                      <span className="status confirmed" style={{ ...chipStyle, background: '#dcfce7', color: '#15803d', border: '1px solid #bbf7d0' }}>Available</span>
+                    );
+
+                  return (
+                    <tr key={d.doctor_id}>
+                      <td style={{ textAlign: 'left', padding: '12px 16px' }}>
+                        <strong>DOC-{String(d.doctor_id).padStart(3, '0')}</strong>
+                      </td>
+                      <td style={{ textAlign: 'left', padding: '12px 16px' }}>
+                        <strong>{d.name.startsWith('Dr.') ? d.name : 'Dr. ' + d.name}</strong>
+                        {d.phone ? <div style={{ fontSize: 11, color: 'var(--color-muted-fg)', marginTop: 2 }}>{d.phone}</div> : null}
+                      </td>
+                      <td style={{ textAlign: 'left', padding: '12px 16px' }}>
+                        <span style={{ fontWeight: 600, color: 'var(--color-fg)' }}>{d.specialization || 'General'}</span>
+                      </td>
+                      <td style={{ textAlign: 'center', padding: '12px 14px' }}>{d.days}</td>
+                      <td style={{ textAlign: 'center', padding: '12px 14px' }}><div>{d.dutyHours}</div></td>
+                      <td style={{ textAlign: 'center', padding: '12px 14px' }}>{badge}</td>
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </>
   );
 }

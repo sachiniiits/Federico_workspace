@@ -1062,19 +1062,37 @@ occupied. Both numbers come straight from the same code paths the legacy files u
 
 ### Phase 7 — PRE portal
 
-- [ ] `PreLayout.jsx` + `preHelpers.js`
-- [ ] `PreDashboardPage.jsx`
-- [ ] `RequestsPage.jsx` + `ApprovePopup.jsx` + `SuggestPopup.jsx` + `RejectPopup.jsx`
-- [ ] `RejectedPage.jsx`, `AdmittedPage.jsx`, `DischargePage.jsx`
-- [ ] `EmergencyPage.jsx` + `EmergencyModal.jsx`
-- [ ] `PatientRecordsPage.jsx` + `Patient360Modal.jsx` + `RegisterPatientModal.jsx`
-- [ ] `DoctorRosterPage.jsx`
-- [ ] `AppointmentPage.jsx` + `PatientPicker.jsx` + `RegisterWalkInPopup.jsx`
-- [ ] `HomCoordinationPage.jsx`
+- [x] `PreLayout.jsx` + `preHelpers.js`
+- [x] `PreDashboardPage.jsx`
+- [x] `RequestsPage.jsx` + `ApprovePopup.jsx` + `SuggestPopup.jsx` + `RejectPopup.jsx`
+- [x] `RejectedPage.jsx`, `AdmittedPage.jsx`, `DischargePage.jsx`
+- [x] `EmergencyPage.jsx` + `EmergencyModal.jsx`
+- [x] `PatientRecordsPage.jsx` + `Patient360Modal.jsx` + `RegisterPatientModal.jsx`
+- [x] `DoctorRosterPage.jsx`
+- [x] `AppointmentPage.jsx` + `PatientPicker.jsx` + `RegisterWalkInPopup.jsx`
+- [x] `HomCoordinationPage.jsx`
 - Files created: ~19 under `src/pages/pre/`
 - Files deleted: `front-end/PRE/` (24 files)
 - Verify: the four dashboard counters match and each card navigates; approve / suggest / reject a pending request (approve must persist the doctor and time); set a visit type to OPD, Admit and Emergency and confirm each toast and the HOM-side effect; register a walk-in patient with insurance and a card upload, then open Patient 360; register an emergency walk-in and confirm a CRITICAL bed request reaches HOM; book an appointment from the picker and via `?patient_id=`; doctor roster search + both filters; PRE→HOM dispatcher sends a bed request and finalises a discharge (and is blocked with the 409 message when the bill is unpaid); **both** `/PRE/pages/appointment.html` and `/PRE/pages/APPointment.html` resolve
 - Commit: `port pre portal to react`
+
+**Phase 7 outcome - done.** All ten PRE pages verified against live data. The dashboard's
+four counters (4 pending / 3 rejected / 8 admitted / 4 in queue) match the row counts on
+the four table pages they link to. Patient records renders the full directory with blood
+group badges, insurance chips, per-patient encounter counts and the eight-branch status
+ladder producing its varied badges. Emergency, doctor roster, appointment booking and HOM
+coordination all render and load their catalogs.
+
+The navbar that all ten pages repeated verbatim in their own HTML now lives once in
+`PreLayout`, and the three dynamically-created popups in `requests.js` (built with
+`createElement` + `innerHTML` + embedded `onclick` strings) are controlled components.
+
+**The `emergency.js` escaping bug disappears here.** Its "Request Bed from HOM" button
+interpolated `escapeHtml(department)` into a JS string literal inside an `onclick`
+attribute; `escapeHtml` turns an apostrophe into `&#39;`, which the HTML parser decodes
+back to `'` before JS ever parses it, so a department name containing an apostrophe broke
+the handler. As a closure the whole class of bug is gone - the second of the three accepted
+invisible fixes in section 7.
 
 ### Phase 8 — Patient portal
 
