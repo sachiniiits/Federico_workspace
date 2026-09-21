@@ -1,0 +1,130 @@
+'use strict';
+
+import { useEffect, useState } from 'react';
+import Modal from '../../components/layout/Modal.jsx';
+import { api } from '../../api/index.js';
+import { toast } from '../../components/feedback/feedback.js';
+import { formatCurrency } from './homHelpers.js';
+
+/**
+ * Ported from #modal-post-service plus openPostServiceModal / submitPostService
+ * in HOM/billing.js.
+ *
+ * HOM stages the charge as a "leader"; FA approves it into the patient ledger.
+ */
+export default function PostServiceModal({ open, admissions, services, onClose, onChanged }) {
+  const [admissionId, setAdmissionId] = useState('');
+  const [serviceId, setServiceId] = useState('');
+  const [qty, setQty] = useState('1');
+  const [error, setError] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    if (!open) return;
+    setAdmissionId('');
+    setServiceId('');
+    setQty('1');
+    setError('');
+  }, [open]);
+
+  if (!open) return null;
+
+  const service = services.find((s) => String(s.service_id) === String(serviceId));
+  const unitPrice = service ? Number(service.base_cost || 0) : 0;
+  const quantity = Math.max(1, Number(qty) || 1);
+
+  async function submit() {
+    setError('');
+    if (!admissionId) return setError('Please select a patient.');
+    if (!serviceId) return setError('Please select a service.');
+    if (quantity < 1) return setError('Quantity must be at least 1.');
+
+    setSubmitting(true);
+    try {
+      await api.billing.leaders.create({
+        admission_id: Number(admissionId),
+        service_id: Number(serviceId),
+        quantity,
+      });
+      toast('Service posted — forwarded to FA for approval.', 'success');
+      onClose();
+      await onChanged();
+    } catch (err) {
+      setError(err.message || 'Failed to submit. Please try again.');
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  return (
+    <Modal open onClose={onClose}>
+      <div className="modal-content" style={{ maxWidth: 520 }}>
+        <div className="modal-header">
+          <h2 className="h2" style={{ fontSize: 18 }}>Post Service Used</h2>
+          <button className="modal-close-btn" onClick={onClose}>{'✕'}</button>
+        </div>
+        <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <p style={{ fontSize: 13, margin: 0, padding: '10px 14px', background: 'var(--status-info-bg, #e0f2fe)', borderRadius: 'var(--radius-sm)', color: 'var(--status-info-fg, #075985)' }}>
+            Select a patient and the service they used. This will be forwarded to Finance Associate
+            for approval.
+          </p>
+
+          <div>
+            <label className="label" style={{ display: 'block', marginBottom: 6 }}>
+              Patient / User ID <span style={{ color: 'var(--error)' }}>*</span>
+            </label>
+            <select className="input" id="post-admission-select" style={{ width: '100%', height: 44, borderRadius: 'var(--radius-base)', appearance: 'auto' }}
+              value={admissionId} onChange={(e) => setAdmissionId(e.target.value)}>
+              <option value="">Select patient...</option>
+              {admissions.map((a) => (
+                <option key={a.admission_id} value={a.admission_id}>
+                  {a.patientName} {'—'} {a.uhid || 'No UHID'}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="label" style={{ display: 'block', marginBottom: 6 }}>
+              Service Used <span style={{ color: 'var(--error)' }}>*</span>
+            </label>
+            <select className="input" id="post-service-select" style={{ width: '100%', height: 44, borderRadius: 'var(--radius-base)', appearance: 'auto' }}
+              value={serviceId} onChange={(e) => setServiceId(e.target.value)}>
+              <option value="">Select service...</option>
+              {services.map((s) => (
+                <option key={s.service_id} value={s.service_id} data-cost={s.base_cost}>
+                  {s.service_name} ({formatCurrency(s.base_cost)})
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+            <div>
+              <label className="label" style={{ display: 'block', marginBottom: 6 }}>
+                Quantity <span style={{ color: 'var(--error)' }}>*</span>
+              </label>
+              <input type="number" className="input" id="post-quantity" min="1" value={qty} onChange={(e) => setQty(e.target.value)} style={{ width: '100%', borderRadius: 'var(--radius-base)' }} />
+            </div>
+            <div>
+              <label className="label" style={{ display: 'block', marginBottom: 6 }}>Charge Amount</label>
+              <input type="text" className="input" id="post-total-preview" readOnly value={formatCurrency(unitPrice * quantity)}
+                style={{ width: '100%', borderRadius: 'var(--radius-base)', background: 'var(--neutral-bg)', fontWeight: 600, color: 'var(--text-primary)' }} />
+            </div>
+          </div>
+
+          <div id="post-modal-error" style={{ display: error ? 'block' : 'none', fontSize: 13, color: 'var(--error)', fontWeight: 500, padding: '8px 12px', background: 'var(--error-bg)', borderRadius: 'var(--radius-sm)' }}>
+            {error}
+          </div>
+        </div>
+        <div className="modal-footer">
+          <button className="btn btn-secondary btn-default" onClick={onClose}>Cancel</button>
+          <button className="btn btn-primary btn-default" id="btn-submit-service" onClick={submit} disabled={submitting}>
+            Submit to FA
+          </button>
+        </div>
+      </div>
+    </Modal>
+  );
+}
+

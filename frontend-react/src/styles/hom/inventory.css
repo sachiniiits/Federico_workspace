@@ -1,0 +1,20 @@
+/*
+ * Extracted verbatim from the inline <style> block of
+ * front-end/HOM/screen-04-inventory.html. These rules were page-scoped only because
+ * each legacy page loaded alone; the matching route chunk imports this file
+ * so the scoping still holds (DEC-5).
+ */
+        /* .dashboard-container / .header-section / .metrics-grid /
+           .metric-card-icon / .main-grid / .table-container / .data-table
+           now live once in global.css. */
+        .stepper-btn { width: 44px; height: 44px; border-radius: var(--radius-base); border: 1px solid var(--border); background: white; color: var(--text-secondary); display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.2s; font-size: 18px; }
+        .stepper-btn:hover { background: var(--neutral-bg); }
+        .stepper-input { flex: 1; height: 44px; border: 1px solid var(--border); border-radius: var(--radius-base); text-align: center; font-size: 14px; color: var(--text-primary); outline: none; }
+        .stepper-input:focus { border-color: var(--primary); }
+
+        .alert-card { background: #FEF2F2; border: 1px solid #FECACA; border-radius: var(--radius-base); padding: 12px; margin-bottom: 12px; }
+
+        /* .modal-overlay/.modal-content/.modal-header/.modal-body/.modal-footer
+           now live once in global.css (Material You dialog styling) instead
+           of being duplicated in every screen's own <style> block. */
+    

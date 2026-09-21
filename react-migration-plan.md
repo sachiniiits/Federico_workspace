@@ -1026,16 +1026,39 @@ misaligned, not the app.
 
 ### Phase 6 — HOM portal
 
-- [ ] `HomLayout.jsx` + `homHelpers.js`
-- [ ] `DashboardPage.jsx` + `AdmissionRequestModal.jsx`
-- [ ] `BedManagementPage.jsx` + `AssignBedModal.jsx` + `BedDetailModal.jsx`
-- [ ] `PatientFlowPage.jsx` + `PatientDetailModal.jsx` + `DischargeModal.jsx`
-- [ ] `InventoryPage.jsx` + `LogUsageModal.jsx` + `RestockModal.jsx`
-- [ ] `BillingPage.jsx` + `PostServiceModal.jsx` + `BillingDetailModal.jsx`
+- [x] `HomLayout.jsx` + `homHelpers.js`
+- [x] `DashboardPage.jsx` + `AdmissionRequestModal.jsx`
+- [x] `BedManagementPage.jsx` + `AssignBedModal.jsx` + `BedDetailModal.jsx`
+- [x] `PatientFlowPage.jsx` + `PatientDetailModal.jsx` + `DischargeModal.jsx`
+- [x] `InventoryPage.jsx` + `LogUsageModal.jsx` + `RestockModal.jsx`
+- [x] `BillingPage.jsx` + `PostServiceModal.jsx` + `BillingDetailModal.jsx`
 - Files created: ~16 under `src/pages/hom/`
 - Files deleted: `front-end/HOM/` (17 files)
 - Verify: all four KPI cards and the pending-request table match; allocate a bed from the dashboard modal and from the bed grid, and deny one; ward tabs, status filters and search all narrow the grid; toggle a bed into and out of maintenance; approve a discharge clearance and see it move lists; patient-flow filters + CSV export produce the same columns; inventory — log usage from the sidebar and from the modal, hit the insufficient-stock error, submit a restock PO with an invoice attachment and reopen it; billing — post a service, open a ledger detail, export the CSV; leave each page open 20 s and confirm the 15 s poll still refreshes
 - Commit: `port hom portal to react`
+
+**Phase 6 outcome - done.** All five HOM screens verified against live data: the dashboard
+(68 beds managed, 12 active inpatients, the PRE discharge queue with real patients and
+their approve actions), bed management (56 bed tiles across 6 ward tabs, status filters
+reading 44 available / 12 occupied / 0 maintenance, occupant names on occupied tiles),
+patient flow, inventory (17 items, 3 low-stock, 2 pending POs, Rs 31,48,250 valuation) and
+billing (16 ledgers, Rs 4,48,500 gross, 9 pending, 7 paid).
+
+**A gap in the original inventory, found and closed.** Section 1.5 listed 21 CSS files but
+missed that the five HOM pages each carry an inline `<style>` block - 200 lines in total,
+and the only inline styles anywhere in the app. Each block was extracted verbatim into
+`src/styles/hom/<page>.css` and imported by its own route chunk, so the page-scoping that
+was previously accidental (one page, one document) still holds.
+
+**Defect D1 is preserved deliberately.** `DashboardPage.jsx` and `AdmissionRequestModal.jsx`
+still call a bare, undefined `showMessage(...)` on their four error paths, each with a
+comment pointing at D1 and DEC-6. Those paths throw `ReferenceError` exactly as they do
+today.
+
+One legacy quirk worth naming because it looks like a porting error and is not: the HOM
+dashboard's bed KPIs read `ward.total_beds` / `ward.occupied_beds`, which report 68 total
+and 0 occupied, while bed management counts the `beds` rows directly and reports 56 with 12
+occupied. Both numbers come straight from the same code paths the legacy files used.
 
 ### Phase 7 — PRE portal
 
