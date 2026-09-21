@@ -940,15 +940,37 @@ harness, not the app - the legacy `shared/ui-feedback.js` used the same double-r
 
 ### Phase 3 — Public pages
 
-- [ ] `LandingPage.jsx`
-- [ ] `MarketplacePage.jsx`
-- [ ] `LoginPage.jsx`
-- [ ] `SignupPage.jsx`
-- [ ] `OrgSignupPage.jsx`
+- [x] `LandingPage.jsx`
+- [x] `MarketplacePage.jsx`
+- [x] `LoginPage.jsx`
+- [x] `SignupPage.jsx`
+- [x] `OrgSignupPage.jsx`
 - Files created: 5 under `src/pages/public/`
 - Files deleted: `front-end/landing/`, `front-end/login/`, `front-end/marketplace/`, `front-end/signup/` (12 files)
 - Verify: landing's five buttons land on the right routes; marketplace search + emergency filter narrow the grid and its card links carry `?org=`; login populates the hospital list, switches demo credentials per role tab and per org, autofills on row click, honours Remember Me across a reload, rejects a wrong-role account with `"That account is not a PRE account."`, and routes each of the five roles to its portal; signup creates a patient (check the UHID in the toast) and lands on the patient dashboard; org-signup's live pricing matches the old page for the same inputs and provisioning shows the tenant id + API key
 - Commit: `port landing, marketplace, login and signup pages to react`
+
+**Phase 3 outcome - done.** The marketplace renders pixel-identical to the legacy page
+side by side against the same backend (branding colours, specialty chips, emergency chips,
+branch summaries, both action links with `?org=`). End-to-end sign-in verified through the
+UI: role tab switch repopulates the demo panel per role and per organization,
+click-to-autofill fills both fields, and submitting lands on `/HOM/screen-01-dashboard.html`
+with `actor=HOM`, `role=SUPER_USER` and the tenant resolved - through the `RequireModule`
+guard.
+
+Two fixes made while porting:
+
+1. **An auth-error race.** `LoginPage` first read `lastAuthError` from context state
+   immediately after awaiting `authenticate()`, which returns the *previous* render's
+   value. `SessionContext` now also keeps the message in a ref and exposes
+   `getLastAuthError()`, read synchronously the instant the await returns.
+2. **Per-page `<title>`.** `index.html` has one static title, so every route would have
+   read "Federico". Added `useDocumentTitle`, applied with each page's original title text
+   copied verbatim from its old `<title>` element.
+
+The two insurance-card upload boxes on the patient signup form are decorative here because
+they were decorative in the original: no file input, no handler, no upload. Wiring them
+would be new behaviour.
 
 ### Phase 4 — Platform portal
 

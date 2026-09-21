@@ -1,6 +1,6 @@
 'use strict';
 
-import { createContext, useCallback, useMemo, useState, useSyncExternalStore } from 'react';
+import { createContext, useCallback, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import { api } from '../api/index.js';
 import { subscribe, getSnapshot, setSession, clearSession } from '../api/session.js';
 import { getProfile, hasModuleAccess } from '../lib/roleProfiles.js';
@@ -15,7 +15,15 @@ export const SessionContext = createContext(null);
  */
 export function SessionProvider({ children }) {
   const session = useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
-  const [lastAuthError, setLastAuthError] = useState(null);
+  const [lastAuthError, setLastAuthErrorState] = useState(null);
+  // authenticate() resolves to null on failure and puts the reason here. State
+  // alone is not enough: a caller awaiting authenticate() would read the
+  // previous render's value. The ref is readable the instant the await returns.
+  const lastAuthErrorRef = useRef(null);
+  const setLastAuthError = useCallback((msg) => {
+    lastAuthErrorRef.current = msg;
+    setLastAuthErrorState(msg);
+  }, []);
 
   const tenant = (session && session.tenant) || null;
   const actor = (session && session.actor) || '';
@@ -59,7 +67,7 @@ export function SessionProvider({ children }) {
       setLastAuthError((err && err.message) || 'Login failed. Please try again.');
       return null;
     }
-  }, []);
+  }, [setLastAuthError]);
 
   /** Ported from shared/rbac.js#signupPatient. Throws so the caller can show the server message. */
   const signupPatient = useCallback(async (payload) => {
@@ -99,6 +107,7 @@ export function SessionProvider({ children }) {
       isAuthenticated: Boolean(session && session.token),
       isPlatformUser: Boolean(session && session.isPlatformUser),
       lastAuthError,
+      getLastAuthError: () => lastAuthErrorRef.current,
       authenticate,
       signupPatient,
       logout,
