@@ -1234,12 +1234,95 @@ Verified side by side against the legacy FA app, signed in as `farah.fa@hosp.com
 
 ### Phase 10 — Cut over and delete the legacy tree
 
-- [ ] Delete every remaining file under `front-end/` (`shared/` — 13 files, `package-lock.json`, `README.md`)
-- [ ] Move `frontend-react/` to `front-end/` (DEC-3)
-- [ ] Write a new `front-end/README.md` covering `npm install` / `npm run dev` / `npm run build`, `VITE_API_URL`, and the route table
-- [ ] Run the full Definition of Done checklist (§6)
+- [x] Delete every remaining file under `front-end/` (`shared/` — 13 files, `package-lock.json`, `README.md`)
+- [x] Move `frontend-react/` to `front-end/` (DEC-3)
+- [x] Write a new `front-end/README.md` covering `npm install` / `npm run dev` / `npm run build`, `VITE_API_URL`, and the route table
+- [x] Restore the CSP `<meta>` tag the legacy pages carried (tracked Phase 0 deviation)
+- [x] Run the full Definition of Done checklist (§6)
 - Files deleted: all 111 legacy files
 - Commit: `remove the legacy vanilla frontend`
+
+**Phase 10 outcome - done.** `front-end/` now holds the React app; the 111
+legacy files are gone. `package.json` was renamed `frontend-react` ->
+`federico-frontend` to match its new location.
+
+Two things found while running §6:
+
+1. **The CSP meta tag is back and the app works under it.** All 48 dev-server
+   resources load, Roboto resolves (27 faces), and no directive needed
+   widening. It is copied verbatim from the legacy pages.
+2. **The route guard never redirected a denied route** (bug introduced in
+   Phase 2, found here). `RequireModule` guarded both the snackbar *and* the
+   redirect timer behind one ref; under StrictMode the effect runs, is cleaned
+   up, then runs again, so the first timer was cleared and no second one was
+   set - a signed-in FA opening a Patient URL sat on a blank page forever. The
+   legacy app redirects to `/FA/fa-dashboard.html`. The ref now guards only the
+   toast; the timer is scheduled every run. Verified: the toast reads
+   `Access denied — FA cannot open the PATIENT module.` and the redirect lands
+   on `/FA/fa-dashboard.html`, matching the legacy app exactly.
+
+### §6 results
+
+Build and hygiene:
+
+- `npm run build` clean; `npm run lint` reports warnings only (fast-refresh
+  hints, one `react(purity)` on a `Date.now()` default and one `react(refs)`
+  false positive on a ref passed as a prop) and no errors.
+- `index.html`: exactly 1 `<script>` (`/src/main.jsx`), 0 stylesheet links. The
+  literal §6 grep for `https://` now matches inside the restored CSP meta tag -
+  that is the tag itself, not a loaded resource.
+- `grep -rnE "window\.[A-Za-z_$][A-Za-z0-9_$]* *=[^=]" src/` finds one hit, in a
+  comment quoting the legacy code. Live `window.*` use is browser APIs only:
+  `print`, `location`, `open`, `addEventListener`, `removeEventListener`,
+  `scrollTo`, `dispatchEvent`. Every legacy global name (`ApiClient`, `API`,
+  `RoleAccess`, `UIFeedback`, `APP_MODULE`, `PatientSession`, `FAActions`,
+  `render`, `currentAdmissionId`, …) appears only inside comments.
+- `innerHTML` appears only in comments. Inline `on*=` attributes appear only
+  inside the `document.write` print documents, which §6 exempts - though they
+  live at their five call sites (`fa/faActions.js`, `patient/patientDocumentCopy.js`,
+  `patient/patientInvoiceCopy.js`) rather than inside `lib/printDocument.js`,
+  which holds just the `window.open` wrapper.
+- 12 commits, one per phase plus the CSS-isolation fix, none with AI attribution.
+  `git diff pre-react-backup -- back-end/` is empty: the backend is untouched.
+
+Every route reachable (dev server returns 200 for all of them, and each was
+loaded in the browser against live data):
+
+- Public 5, Platform 2, HOM 5 + 2 redirects, PRE 10 + 2 redirects + the
+  `APPointment.html` alias, Patient 4, FA 1 + 6 hash views, Admin 5.
+- Per-route stylesheet count stayed at exactly 1 (Patient, public), 2 (Admin) or
+  3 (HOM, PRE, FA) throughout a single session that visited all five portals -
+  no accumulation.
+
+Behaviour parity:
+
+- Deep link `/HOM/screen-03-patient-flow.html?uhid=UHID-978131` pasted into a
+  fresh tab loads that page and prefills the search box.
+- Two tabs held independent HOM and PRE sessions with different tokens
+  simultaneously; signing out of the PRE tab left the HOM tab signed in.
+- With `INVENTORY` disabled for the org, the HOM nav link greys to opacity 0.5,
+  `cursor: not-allowed`, carries the 🔒 pseudo-element, does not navigate, and
+  opens the dialog with the exact body text.
+- With the backend stopped, sign-in reports
+  `Cannot reach the server. Is the backend running on http://localhost:3000?`
+- The 15s poll fires one burst of the same 7 endpoints the legacy HOM dashboard
+  requested, and skips entirely while `document.hidden` - confirmed by
+  overriding `document.hidden` and by a `focus` event, since the automation tab
+  is always backgrounded.
+- All six printable documents were captured by stubbing `window.open` and diffed
+  line by line against the legacy output. Five are byte-identical; the Patient
+  billing copy differs only in its `REC-<Date.now()>` reference, which both apps
+  generate fresh at click time.
+
+CSS:
+
+- Each of the 21 stylesheets was compared against its `pre-react-backup` blob.
+  Twenty have **zero** content differences; `admin.css` differs by exactly the
+  three `@import` lines DEC-4 authorised. The only byte-level difference is CRLF
+  vs LF introduced by the Windows checkout, not by any edit.
+- The build emits the three shared stylesheets as one CSS asset plus
+  `ModuleLock.css`; every portal stylesheet now travels inside its route's JS
+  chunk as text and is mounted and unmounted with the route (see Phase 8a).
 
 ---
 

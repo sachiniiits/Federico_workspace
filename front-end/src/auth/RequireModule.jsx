@@ -30,10 +30,16 @@ export default function RequireModule({ module: moduleName, children }) {
   const allowed = isAuthenticated && hasModuleAccess(moduleName);
 
   useEffect(() => {
-    if (!isAuthenticated || allowed || firedRef.current) return undefined;
-    firedRef.current = true;
+    if (!isAuthenticated || allowed) return undefined;
     setDenied(true);
-    toast('Access denied — ' + actor + ' cannot open the ' + moduleName + ' module.', 'error');
+    // The snackbar is shown once; the redirect is scheduled on every run. In
+    // StrictMode the effect runs, is cleaned up, then runs again - guarding the
+    // timeout behind the same ref as the toast would clear the first timer and
+    // never set a second, leaving the denied route stuck on a blank page.
+    if (!firedRef.current) {
+      firedRef.current = true;
+      toast('Access denied — ' + actor + ' cannot open the ' + moduleName + ' module.', 'error');
+    }
     const t = setTimeout(() => navigate(getActorHome(actor), { replace: true }), REDIRECT_DELAY_MS);
     return () => clearTimeout(t);
   }, [isAuthenticated, allowed, actor, moduleName, navigate]);
