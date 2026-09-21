@@ -974,12 +974,25 @@ would be new behaviour.
 
 ### Phase 4 — Platform portal
 
-- [ ] `PlatformLoginPage.jsx`
-- [ ] `PlatformDashboardPage.jsx` + `OverviewTab` + `OrganizationsTab` + `RatesTab` + `ProvisionDialog` + `OrgDetailDialog`
+- [x] `PlatformLoginPage.jsx`
+- [x] `PlatformDashboardPage.jsx` + `OverviewTab` + `OrganizationsTab` + `RatesTab` + `ProvisionDialog` + `OrgDetailDialog`
 - Files created: 7 under `src/pages/platform/`
 - Files deleted: `front-end/platform/` (5 files)
 - Verify: platform login redirects an existing platform session straight to the dashboard; the three tabs switch; MRR/ARR/collections match the old page; suspend then activate an org and watch both the table and overview refresh; provision a new org; save a rate change and confirm `GET /platform/rates` returns it
 - Commit: `port platform super user portal to react`
+
+**Phase 4 outcome - done.** Signed in as the platform super user and confirmed the
+overview renders live figures (MRR, ARR, payments collected, tenant/branch/patient/user
+counts and the per-service revenue grid), and that the Hospital Tenants table lists both
+organizations with tenant id, status, billing model, monthly fee, module count, branches,
+users, bed occupancy and clinical flow. Both native `<dialog>` elements became controlled
+`Modal` components.
+
+Defect D8 (the org-detail dialog re-binding its tab listeners on every open, so they
+accumulated) disappears here - a controlled component cannot reproduce it. That is one of
+the three accepted invisible fixes recorded in section 7. The three empty detail panels
+(Modules, API Keys, Provisioning Log) stay empty, because the legacy `openOrgDetail` only
+ever filled the Summary panel.
 
 ### Phase 5 — Admin portal
 
