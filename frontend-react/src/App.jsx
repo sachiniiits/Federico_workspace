@@ -1,9 +1,17 @@
+'use strict';
+
 import { Outlet } from 'react-router-dom';
+import FeedbackHost from './components/feedback/FeedbackHost.jsx';
 
 /**
- * Root shell. Phase 2 mounts the toast region and dialog host here, replacing
- * shared/ui-feedback.js's document-level singletons.
+ * Root shell. FeedbackHost replaces the document-level snackbar region and
+ * dialog scrims that shared/ui-feedback.js created on demand.
  */
 export default function App() {
-  return <Outlet />;
+  return (
+    <>
+      <Outlet />
+      <FeedbackHost />
+    </>
+  );
 }

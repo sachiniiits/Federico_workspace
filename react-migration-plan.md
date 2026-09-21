@@ -908,16 +908,35 @@ Two things the verification turned up:
 
 ### Phase 2 — Feedback, UI primitives, routing skeleton
 
-- [ ] `src/components/feedback/*` (5 files) reproducing `UIFeedback`
-- [ ] `src/components/ui/{Badge,Button,Card,Input,Tabs,DataTable}.jsx`
-- [ ] `src/components/layout/Modal.jsx`, `ModuleLock.jsx`
-- [ ] `src/components/forms/DepartmentSelect.jsx`, `FileField.jsx`
-- [ ] `src/hooks/{useApi,usePolling,useAsyncLock,useSearchParam}.js`
-- [ ] `src/routes.jsx` with all routes from §2.2 pointing at placeholders; `src/App.jsx` mounts `ToastRegion` + `DialogHost`
-- [ ] `src/auth/RequireModule.jsx`, `src/auth/actorHome.js`
+- [x] `src/components/feedback/*` (5 files) reproducing `UIFeedback`
+- [x] `src/components/ui/{Badge,Button,Card,Input,Tabs,DataTable}.jsx`
+- [x] `src/components/layout/Modal.jsx`, `ModuleLock.jsx`
+- [x] `src/components/forms/DepartmentSelect.jsx`, `FileField.jsx`
+- [x] `src/hooks/{useApi,usePolling,useAsyncLock,useSearchParam}.js`
+- [x] `src/routes.jsx` with all routes from §2.2 pointing at placeholders; `src/App.jsx` mounts `ToastRegion` + `DialogHost`
+- [x] `src/auth/RequireModule.jsx`, `src/auth/actorHome.js`
 - Files created: ~20
 - Verify: every URL in §2.2 renders its placeholder without a full reload; a manual `toast()`, `confirm()` and `selectOne()` each look and behave like the originals (4 s dismiss, Escape closes, focus lands on the last action)
 - Commit: `add feedback, ui primitives, and the route skeleton`
+
+**Phase 2 outcome - done.** All 34 routes from §2.2 resolve, including both
+`appointment.html` casings (DEC-7) and the `*` fallback. `RequireModule` redirects an
+unauthenticated visitor to the login page and, for a signed-in actor without rights to a
+portal, shows the access-denied snackbar before redirecting. Toasts render with the right
+icons and classes, `'warn'` still degrades to `info` (defect D9 preserved), and confirm /
+selectOne resolve to `true` / the chosen value, with Escape resolving `false` / `null`.
+The production build emits one JS chunk per route group.
+
+**A real bug in the port, caught and fixed.** `Toast` first derived its lifecycle from a
+single `visible` boolean. Because a toast mounts with `visible === false`, the exit effect
+ran immediately and unmounted it ~400ms later, before it was ever shown - reliably so
+whenever `requestAnimationFrame` is throttled, as in a background tab. It now tracks an
+explicit `entering | visible | exiting` phase and only schedules removal from `exiting`.
+
+One environmental note for anyone re-running these checks: browser automation drives a
+*hidden* tab, where Chrome pauses `requestAnimationFrame` and throttles timers. The
+`.is-visible` class therefore never appears and timings stretch by ~15%. That is the
+harness, not the app - the legacy `shared/ui-feedback.js` used the same double-rAF enter.
 
 ### Phase 3 — Public pages
 

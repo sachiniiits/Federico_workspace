@@ -1,0 +1,25 @@
+/*
+ * Lifted verbatim from the <style id="federico-module-lock-styles"> block that
+ * shared/rbac.js#ensureLockStyles injected at runtime. Same declarations, now a
+ * real stylesheet instead of a string.
+ */
+.module-locked {
+  opacity: 0.5;
+  filter: grayscale(0.6);
+  cursor: not-allowed !important;
+  position: relative;
+}
+.module-locked::after {
+  content: '\1F512';
+  font-size: 0.85em;
+  margin-left: 6px;
+  opacity: 0.8;
+}
+.module-locked * {
+  pointer-events: none !important;
+}
+a.module-locked,
+button.module-locked {
+  text-decoration: none;
+}
+
