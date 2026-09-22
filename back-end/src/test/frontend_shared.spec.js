@@ -1,11 +1,40 @@
 'use strict';
 
+const fs = require('node:fs');
+const path = require('node:path');
+const vm = require('node:vm');
+
+/**
+ * These three helpers used to live at front-end/shared/{formatters,sanitizer,
+ * insurance}.js as UMD factories, which this suite could `require()` directly.
+ * The React migration moved them to front-end/src/lib/ as plain ES modules, so
+ * they can no longer be required from this CommonJS suite.
+ *
+ * Rather than change how the backend runs its tests (jest here has no ESM
+ * flag and no babel transform), each module is read and evaluated in a vm
+ * context. All three are dependency-free — no imports, only exported function
+ * declarations — so stripping the `export` keyword leaves valid script source.
+ * The assertions below are unchanged.
+ */
+function loadEsmModule(relativePath) {
+  const source = fs.readFileSync(path.resolve(__dirname, relativePath), 'utf8');
+  const exportedNames = [...source.matchAll(/^export\s+(?:function|const|let)\s+([A-Za-z0-9_$]+)/gm)].map(
+    (match) => match[1],
+  );
+  const script = source.replace(/^export\s+/gm, '');
+  // The trailing expression is the script's completion value, which gives us
+  // the exported bindings whether they were declared with function or const.
+  return vm.runInNewContext(`${script}\n;({ ${exportedNames.join(', ')} });`);
+}
+
+const LIB = '../../../front-end/src/lib';
+
 describe('Frontend Shared Utilities', () => {
   beforeAll(() => {
     global.window = global;
-    require('../../../front-end/shared/formatters');
-    require('../../../front-end/shared/sanitizer');
-    require('../../../front-end/shared/insurance');
+    window.Formatters = loadEsmModule(`${LIB}/formatters.js`);
+    window.Sanitizer = loadEsmModule(`${LIB}/sanitizer.js`);
+    window.InsuranceCalc = loadEsmModule(`${LIB}/insurance.js`);
   });
 
   describe('Formatters', () => {

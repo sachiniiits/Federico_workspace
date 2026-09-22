@@ -1,6 +1,6 @@
 'use strict';
 
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../../api/index.js';
 import { useApi } from '../../hooks/useApi.js';
@@ -37,7 +37,11 @@ export default function HomBillingPage() {
   const [postOpen, setPostOpen] = useState(false);
   const [detailLedgerId, setDetailLedgerId] = useState(null);
 
-  const { data, reload } = useApi(async () => {
+  // loadBillingData() wrapped the whole load in a try/catch that toasted
+  // `Failed to load billing data: <message>`. Every endpoint below has its own
+  // .catch(() => []), so that only fires when the shaping code throws - but it
+  // is this page's one load-failure signal, so it is reproduced.
+  const { data, error, reload } = useApi(async () => {
     const [ledgers, admissions, patients, beds, preRequests, services] = await Promise.all([
       api.billing.ledger.listAll().catch(() => []),
       api.admissions.list().catch(() => []),
@@ -92,6 +96,14 @@ export default function HomBillingPage() {
 
     return { rows, servicesById, availableServices: services || [], availableAdmissions };
   }, []);
+
+  // Reported once per distinct failure so the 15s poll cannot stack duplicates.
+  const reportedErrorRef = useRef(null);
+  useEffect(() => {
+    if (!error || reportedErrorRef.current === error) return;
+    reportedErrorRef.current = error;
+    toast('Failed to load billing data: ' + (error.message || 'Unknown error'), 'error');
+  }, [error]);
 
   usePolling(reload, 15000);
 

@@ -247,17 +247,20 @@ export default function AppointmentPage() {
 
             <div id="selectedPatientCard" className="quick-patient-box" style={{ marginTop: 16 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                {/* fillPatientForm() applied a per-field fallback to every one
+                    of these, so a record missing a name still reads "Verified
+                    Patient" rather than going blank. */}
                 <strong id="cardPatientName" style={{ fontSize: 15, color: 'var(--color-fg)' }}>
-                  {selected ? selected.name : 'No Patient Selected'}
+                  {selected ? selected.name || 'Verified Patient' : 'No Patient Selected'}
                 </strong>
                 <span id="cardPatientUhid" className="status pending" style={{ background: '#f1f5f9', color: '#475569', fontSize: 11, padding: '2px 8px', borderRadius: 12 }}>
-                  {selected ? selected.patientId : '—'}
+                  {selected ? selected.patientId || 'UHID' : '—'}
                 </span>
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, fontSize: 12 }}>
-                <div><span style={{ color: 'var(--color-muted-fg)' }}>Age / Gender:</span> <strong>{selected ? selected.age + ' / ' + selected.gender : '—'}</strong></div>
-                <div><span style={{ color: 'var(--color-muted-fg)' }}>Contact:</span> <strong>{selected ? selected.phone : '—'}</strong></div>
-                <div style={{ gridColumn: '1 / -1' }}><span style={{ color: 'var(--color-muted-fg)' }}>Address:</span> <strong>{selected ? selected.address : '—'}</strong></div>
+                <div><span style={{ color: 'var(--color-muted-fg)' }}>Age / Gender:</span> <strong id="cardPatientAgeGender">{selected ? (selected.age || '—') + ' / ' + (selected.gender || '—') : '—'}</strong></div>
+                <div><span style={{ color: 'var(--color-muted-fg)' }}>Contact:</span> <strong id="cardPatientPhone">{selected ? selected.phone || '—' : '—'}</strong></div>
+                <div style={{ gridColumn: '1 / -1' }}><span style={{ color: 'var(--color-muted-fg)' }}>Address:</span> <strong id="cardPatientAddress">{selected ? selected.address || '—' : '—'}</strong></div>
               </div>
             </div>
           </div>

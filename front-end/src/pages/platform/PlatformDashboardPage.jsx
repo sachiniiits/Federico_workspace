@@ -356,15 +356,32 @@ export default function PlatformDashboardPage() {
     RATE_FIELDS.reduce((acc, [, key, , fallback]) => ({ ...acc, [key]: fallback }), {}),
   );
 
+  /**
+   * platform-dashboard.js had two loaders that both called platform.usage():
+   * loadOverview() for the stats panel and loadOrganizationsTable() for the
+   * table. They are kept separate because they report different failures -
+   * merging them would silently drop the "Could not load organizations."
+   * message the Organizations tab shows.
+   */
   const loadUsage = useCallback(async () => {
     try {
       const data = await api.platform.usage();
       setUsage(data);
-      setOrgs(data.organizations || []);
       return data;
     } catch (err) {
       setUsage(false);
       toast(err.message || 'Could not load platform usage.', 'error');
+      return null;
+    }
+  }, []);
+
+  const loadOrgs = useCallback(async () => {
+    try {
+      const data = await api.platform.usage();
+      setOrgs(data.organizations || []);
+      return data;
+    } catch (err) {
+      toast(err.message || 'Could not load organizations.', 'error');
       return null;
     }
   }, []);
@@ -400,10 +417,11 @@ export default function PlatformDashboardPage() {
   useEffect(() => {
     (async () => {
       await loadUsage();
+      await loadOrgs();
       await loadActivity();
       await loadRates();
     })();
-  }, [loadUsage, loadActivity, loadRates]);
+  }, [loadUsage, loadOrgs, loadActivity, loadRates]);
 
   async function toggleOrgStatus(id, action) {
     try {
@@ -411,6 +429,7 @@ export default function PlatformDashboardPage() {
       else await api.platform.organizations.activate(id);
       toast('Organization status updated.', 'success');
       await loadUsage();
+      await loadOrgs();
     } catch (err) {
       toast(err.message || 'Failed to update status.', 'error');
     }
@@ -505,7 +524,10 @@ export default function PlatformDashboardPage() {
       <ProvisionDialog
         open={provisionOpen}
         onClose={() => setProvisionOpen(false)}
-        onProvisioned={loadUsage}
+        onProvisioned={async () => {
+          await loadUsage();
+          await loadOrgs();
+        }}
       />
       <OrgDetailDialog org={detailOrg} onClose={() => setDetailOrgId(null)} />
     </>
