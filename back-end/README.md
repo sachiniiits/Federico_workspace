@@ -88,12 +88,12 @@ src/
 
 | Role | Email | Password | Primary Portal |
 | :--- | :--- | :--- | :--- |
-| **Platform Super User** | `platform@federico.com` | `Federico@Platform123` | `front-end/platform/` |
-| **Hospital Admin** | `owner@hosp.com` | `Owner@123` | `front-end/Admin/` |
-| **Hospital Operations (HOM)** | `admin@hosp.com` | `Hom@123` | `front-end/HOM/` |
-| **Patient Registration (PRE)** | `rekha.pre@hosp.com` | `Pre@123` | `front-end/PRE/` |
-| **Finance Associate (FA)** | `farah.fa@hosp.com` | `Fa@123` | `front-end/FA/` |
-| **Patient** | `arjun.k@hosp.com` | `Hamiz@123` | `front-end/Patient/` |
+| **Platform Super User** | `platform@federico.com` | `Federico@Platform123` | `/platform/platform-login.html` |
+| **Hospital Admin** | `owner@hosp.com` | `Owner@123` | `/Admin/screen-01-dashboard.html` |
+| **Hospital Operations (HOM)** | `admin@hosp.com` | `Hom@123` | `/HOM/screen-01-dashboard.html` |
+| **Patient Registration (PRE)** | `rekha.pre@hosp.com` | `Pre@123` | `/PRE/pages/PRE.html` |
+| **Finance Associate (FA)** | `farah.fa@hosp.com` | `Fa@123` | `/FA/fa-dashboard.html` |
+| **Patient** | `arjun.k@hosp.com` | `Hamiz@123` | `/Patient/patient-dashboard.html` |
 
 ---
 

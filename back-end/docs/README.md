@@ -55,13 +55,12 @@ The system comes pre-seeded with accounts for all platform and hospital roles:
 
 | Role / Portal | Name / Description | Email | Password | Primary Portal |
 |:---|:---|:---|:---|:---|
-| **Platform Super User** | Platform Owner | `platform@federico.com` | `Platform@123` | `front-end/platform/` |
-| **Hospital Admin** | Hospital Owner / Admin | `owner@hosp.com` | `Owner@123` | `front-end/Admin/` |
-| **HOM (Hospital Ops Manager)** | Operations Lead | `admin@hosp.com` | `Hom@123` | `front-end/HOM/` |
-| **PRE (Patient Relations Exec)** | Intake & Front Desk | `rekha.pre@hosp.com` | `Pre@123` | `front-end/PRE/` |
-| **FA (Finance Administrator)** | Billing & Cashier | `farah.fa@hosp.com` | `Fa@123` | `front-end/FA/` |
-| **Patient** | Arjun Kapoor | `arjun.k@hosp.com` | `Arjun@123` | `front-end/Patient/` |
-| **Patient** | Hamiz Shams | `hamiz@hosp.com` | `Hamiz@123` | `front-end/Patient/` |
+| **Platform Super User** | Platform Owner | `platform@federico.com` | `Federico@Platform123` | `/platform/platform-login.html` |
+| **Hospital Admin** | Hospital Owner / Admin | `owner@hosp.com` | `Owner@123` | `/Admin/screen-01-dashboard.html` |
+| **HOM (Hospital Ops Manager)** | Operations Lead | `admin@hosp.com` | `Hom@123` | `/HOM/screen-01-dashboard.html` |
+| **PRE (Patient Relations Exec)** | Intake & Front Desk | `rekha.pre@hosp.com` | `Pre@123` | `/PRE/pages/PRE.html` |
+| **FA (Finance Administrator)** | Billing & Cashier | `farah.fa@hosp.com` | `Fa@123` | `/FA/fa-dashboard.html` |
+| **Patient** | Arjun Kapoor | `arjun.k@hosp.com` | `Hamiz@123` | `/Patient/patient-dashboard.html` |
 
 ---
 
