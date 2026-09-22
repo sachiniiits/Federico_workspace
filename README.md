@@ -21,7 +21,7 @@ Federico is a multi-tenant web application designed to streamline non-clinical h
 Federico follows a layered clean architecture pattern:
 
 ```
-Frontend (Vanilla ES6+ HTML / CSS / JS)
+Frontend (React 19 + Vite 8 SPA — components, hooks, ES modules, react-router-dom)
     │
     ▼ (REST API / Bearer Token & Per-Tab Session Isolation)
 Express.js Routing & Middleware (Auth, Security/CSP, Multi-Tenancy, Dynamic RBAC)
@@ -40,48 +40,63 @@ In-Memory Store (dataStore.js) with Crash-Safe Atomic Disk Persistence (db.json)
 
 ## User Roles & Portals
 
-| Role | Portal Path | Key Responsibilities |
+| Role | Entry Route | Key Responsibilities |
 | :--- | :--- | :--- |
-| **Platform Super User** | `front-end/platform/` | Tenant provisioning, subscription plans, module flags, revenue tracking, and audit logs. |
-| **Hospital Admin** | `front-end/Admin/` | Branch setup, custom dynamic RBAC roles, staff assignment, doctor catalog, and inventory catalogs. |
-| **Hospital Operations (HOM)** | `front-end/HOM/` | Real-time bed allocation, ward occupancy matrix, service charge logging, and medical discharge readiness. |
-| **Patient Registration (PRE)** | `front-end/PRE/` | Pre-registration review, OPD appointments, emergency triage, and final administrative discharge. |
-| **Finance Associate (FA)** | `front-end/FA/` | Service charge approvals, manual charge entries, bill dispatch, payment processing, and receipts. |
-| **Patient** | `front-end/Patient/` | OPD specialist booking, insurance management, itemized bill review, and digital payments. |
+| **Platform Super User** | `/platform/platform-login.html` | Tenant provisioning, subscription plans, module flags, revenue tracking, and audit logs. |
+| **Hospital Admin** | `/Admin/screen-01-dashboard.html` | Branch setup, custom dynamic RBAC roles, staff assignment, doctor catalog, and inventory catalogs. |
+| **Hospital Operations (HOM)** | `/HOM/screen-01-dashboard.html` | Real-time bed allocation, ward occupancy matrix, service charge logging, and medical discharge readiness. |
+| **Patient Registration (PRE)** | `/PRE/pages/PRE.html` | Pre-registration review, OPD appointments, emergency triage, and final administrative discharge. |
+| **Finance Associate (FA)** | `/FA/fa-dashboard.html` | Service charge approvals, manual charge entries, bill dispatch, payment processing, and receipts. |
+| **Patient** | `/Patient/patient-dashboard.html` | OPD specialist booking, insurance management, itemized bill review, and digital payments. |
+
+Signing in routes each role to its own portal automatically. The full route table is
+in [`front-end/README.md`](front-end/README.md).
 
 ---
 
 ## Getting Started
 
 ### Prerequisites
-- Node.js (v18 or higher)
+- Node.js v20.19+ or v22.12+ (required by Vite 8)
 - npm (v9 or higher)
 
-### 1. Install Backend Dependencies
+Run the backend and the frontend in two separate terminals.
+
+### 1. Backend — `http://localhost:3000`
 ```bash
 cd back-end
 npm install
-```
-
-### 2. Start Backend Server
-```bash
-# Production start
-npm start
 
 # Development mode with nodemon
 npm run start:dev
+
+# or production start
+npm start
 ```
-The server will run on `http://localhost:3000`.
 - Health Check: `http://localhost:3000/health`
 - API Documentation (Swagger): `http://localhost:3000/api`
 
-### 3. Open Frontend
-Serve the `front-end` directory with any static web server or open directly in a browser:
+### 2. Frontend — `http://localhost:5173`
 ```bash
 cd front-end
-npx serve .
+npm install
+npm run dev
 ```
-Open `http://localhost:5500/landing/landing-page.html` or `http://localhost:5500/login/login-page.html`.
+Open `http://localhost:5173/`, which redirects to the landing page.
+
+The frontend defaults to an API on `http://localhost:3000`. To point it elsewhere,
+copy `.env.example` to `.env` and set `VITE_API_URL`.
+
+### Production build
+```bash
+cd front-end
+npm run build      # bundles into dist/
+npm run preview    # serves dist/ with the same URL rewriting as dev
+```
+Routes keep their legacy `.html` suffixes, so **any production host needs a SPA
+fallback rewrite** to `index.html` or every deep link 404s. See
+[`front-end/README.md`](front-end/README.md) for the nginx example and the full route
+table.
 
 ---
 
@@ -116,17 +131,21 @@ All 20 test suites (101 tests) cover unit tests, security middleware, data integ
 ```
 16_Federico/
 ├── definitions.yml              # System, actor, and endpoint definitions
-├── front-end/                   # Role portals and shared UI components
-│   ├── Admin/                   # Hospital Admin portal
-│   ├── FA/                      # Finance Associate portal
-│   ├── HOM/                     # Hospital Operations Manager portal
-│   ├── PRE/                     # Patient Registration & Eligibility portal
-│   ├── Patient/                 # Patient self-service portal
-│   ├── platform/                # Platform Super User portal
-│   ├── landing/                 # Public product showcase & overview
-│   ├── login/ & signup/         # Authentication & registration
-│   ├── marketplace/             # Hospital onboarding directory
-│   └── shared/                  # API client, design tokens, RBAC, and UI feedback
+├── react-migration-plan.md      # Record of the vanilla-JS -> React migration
+├── front-end/                   # React + Vite SPA serving all eight role portals
+│   ├── index.html               # Single entry point — one script tag, /src/main.jsx
+│   ├── vite.config.js           # SPA fallback for the legacy .html route suffixes
+│   └── src/
+│       ├── main.jsx             # createRoot + SessionProvider + RouterProvider
+│       ├── routes.jsx           # Full route table; portal layouts are lazy-loaded
+│       ├── api/                 # One module per backend namespace, composed into `api`
+│       ├── auth/                # Session context, route guard, actor home paths
+│       ├── lib/                 # Pure helpers: formatters, insurance, sanitizer, CSV, print
+│       ├── hooks/               # useApi, usePolling, usePageStyles, useDocumentTitle
+│       ├── components/          # Feedback (toast/dialog), UI primitives, layout, forms
+│       ├── pages/               # One folder per portal: admin, fa, hom, patient,
+│       │                        #   platform, pre, public
+│       └── styles/              # Stylesheets, mounted per route by usePageStyles
 └── back-end/                    # Express REST API backend
     ├── src/
     │   ├── config/              # Environment, Swagger, service & resource catalogs
