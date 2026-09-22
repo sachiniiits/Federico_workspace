@@ -1,0 +1,299 @@
+'use strict';
+
+import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { api } from '../../api/index.js';
+import { useApi } from '../../hooks/useApi.js';
+import { usePolling } from '../../hooks/usePolling.js';
+import { useDocumentTitle } from '../../hooks/useDocumentTitle.js';
+import { useSearchParam } from '../../hooks/useSearchParam.js';
+import Badge from '../../components/ui/Badge.jsx';
+import Button from '../../components/ui/Button.jsx';
+import { csvEscape, downloadCsv } from '../../lib/csv.js';
+import { toast } from '../../components/feedback/feedback.js';
+import { statusLabel, statusVariant, daysSince, formatDate, joinPreRequestsWithPatients } from './homHelpers.js';
+import PatientDetailModal from './PatientDetailModal.jsx';
+import DischargeModal from './DischargeModal.jsx';
+import { usePageStyles } from '../../hooks/usePageStyles.js';
+import patientFlowCss from '../../styles/hom/patient-flow.css?inline';
+
+const FLOW_STATUSES = ['ADMITTED', 'DISCHARGE_REQUESTED', 'DISCHARGE_APPROVED', 'DISCHARGED'];
+
+/** Ported from HOM/screen-03-patient-flow.html + patient-flow.js. */
+export default function PatientFlowPage() {
+  usePageStyles(patientFlowCss);
+  useDocumentTitle('Patient Flow | Federico Hospital HOM');
+  const navigate = useNavigate();
+  const uhidParam = useSearchParam('uhid');
+
+  const [filters, setFilters] = useState({ search: uhidParam || '', department: '', status: '', dateRange: '' });
+  const [detailId, setDetailId] = useState(null);
+  const [dischargeId, setDischargeId] = useState(null);
+
+  const { data, reload } = useApi(async () => {
+    const [preRequests, patients, doctors, beds, admissions, ledgers] = await Promise.all([
+      api.preRequests.list().catch(() => []),
+      api.patients.list().catch(() => []),
+      api.doctors.list().catch(() => []),
+      api.wards.beds().catch(() => []),
+      api.admissions.list().catch(() => []),
+      api.billing.ledger.listAll().catch(() => []),
+    ]);
+
+    const doctorsById = {};
+    (Array.isArray(doctors) ? doctors : []).forEach((d) => (doctorsById[d.doctor_id] = d));
+    const bedsById = {};
+    (Array.isArray(beds) ? beds : []).forEach((b) => (bedsById[b.bed_id] = b));
+
+    // "Bills cleared" is Finance's signal that the patient is financially clear:
+    // their active admission has a PAID ledger. HOM watches it so it knows PRE
+    // can safely release the bed.
+    const ledgerByAdmission = {};
+    (Array.isArray(ledgers) ? ledgers : []).forEach((l) => (ledgerByAdmission[l.admission_id] = l));
+    const billsClearedByPatient = {};
+    (Array.isArray(admissions) ? admissions : []).forEach((a) => {
+      const ledger = ledgerByAdmission[a.admission_id];
+      if (a.bills_cleared || (ledger && ledger.status === 'PAID')) billsClearedByPatient[a.patient_id] = true;
+    });
+
+    const rows = joinPreRequestsWithPatients(
+      (Array.isArray(preRequests) ? preRequests : []).filter((r) => FLOW_STATUSES.includes(r.status)),
+      Array.isArray(patients) ? patients : [],
+      doctorsById,
+    ).map((r) => ({
+      ...r,
+      bedNumber: bedsById[r.bed_id]?.bed_number || '-',
+      billsCleared: Boolean(billsClearedByPatient[r.patient_id]),
+    }));
+
+    return { rows };
+  }, []);
+
+  usePolling(reload, 15000);
+
+  const rows = data?.rows || [];
+  const departments = [...new Set(rows.map((r) => r.department).filter(Boolean))].sort();
+
+  function matchesDateRange(row) {
+    if (!filters.dateRange) return true;
+    const days = daysSince(row.decided_at || row.created_at);
+    switch (filters.dateRange) {
+      case 'today': return days === 0;
+      case 'last3': return days <= 3;
+      case 'last7': return days <= 7;
+      case 'older': return days > 7;
+      default: return true;
+    }
+  }
+
+  const q = filters.search.trim().toLowerCase();
+  const filtered = rows.filter((row) => {
+    if (filters.department && row.department !== filters.department) return false;
+    if (filters.status && row.status !== filters.status) return false;
+    if (!matchesDateRange(row)) return false;
+    if (!q) return true;
+    return [row.patientUhid, row.patientName, row.department, row.bedNumber, row.doctorName]
+      .join(' ')
+      .toLowerCase()
+      .includes(q);
+  });
+
+  const pending = rows.filter((r) => r.status === 'DISCHARGE_REQUESTED');
+  const approved = rows.filter((r) => r.status === 'DISCHARGE_APPROVED');
+
+  function exportCsv() {
+    if (!filtered.length) {
+      toast('There are no patient flow rows to export for the current filters.', 'warning');
+      return;
+    }
+    const csv = [
+      ['UHID', 'Patient', 'Department', 'Bed', 'Physician', 'Status', 'Days Stay'].join(','),
+      ...filtered.map((r) =>
+        [r.patientUhid, r.patientName, r.department, r.bedNumber, r.doctorName, statusLabel(r.status), daysSince(r.decided_at || r.created_at)]
+          .map(csvEscape)
+          .join(','),
+      ),
+    ].join('\n');
+    downloadCsv('hom-patient-flow.csv', csv);
+  }
+
+  const queueRow = (row, actionCell) => (
+    <tr key={row.pre_request_id}>
+      <td style={{ fontWeight: 500, color: 'var(--text-secondary)' }}>{row.patientUhid}</td>
+      <td>
+        <div style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{row.patientName}</div>
+        <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>{row.patientAge}</div>
+      </td>
+      <td>{row.department || 'General'}</td>
+      <td style={{ fontWeight: 500 }}>{row.bedNumber}</td>
+      <td>{row.doctorName}</td>
+      <td>{formatDate(row.decided_at || row.created_at)}</td>
+      <td>{daysSince(row.decided_at || row.created_at)} days</td>
+      {actionCell}
+    </tr>
+  );
+
+  return (
+    <>
+      <main className="dashboard-container">
+        <div className="header-section">
+          <div>
+            <h1 className="h1" style={{ marginBottom: 8 }}>Patient Flow &amp; Admissions</h1>
+            <p className="body-text">Manage inpatient care paths and process PRE discharge clearances</p>
+          </div>
+          <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+            <button className="btn btn-secondary btn-default" id="patient-flow-export" onClick={exportCsv}>Export CSV</button>
+          </div>
+        </div>
+
+        <div className="card" style={{ padding: 24, marginBottom: 24 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+            <div>
+              <h2 className="h2" style={{ fontSize: 18 }}>Pending Discharge Clearances</h2>
+              <p className="body-text" style={{ fontSize: 13, marginTop: 2 }}>Review and approve discharge requests submitted by PRE</p>
+            </div>
+            <span id="discharge-queue-badge">
+              <Badge variant={pending.length ? 'warning' : 'success'}>
+                {pending.length ? pending.length + ' Clearance Pending' : 'All Cleared'}
+              </Badge>
+            </span>
+          </div>
+          <div className="table-scroll-container" style={{ maxHeight: 280 }}>
+            <table className="data-table">
+              <thead>
+                <tr><th>UHID</th><th>Patient</th><th>Department</th><th>Assigned Bed</th><th>Physician</th><th>Admitted</th><th>Days Stay</th><th>Action</th></tr>
+              </thead>
+              <tbody id="discharge-queue-tbody">
+                {pending.length === 0 && approved.length === 0 ? (
+                  <tr>
+                    <td colSpan="8" style={{ textAlign: 'center', padding: 24, color: 'var(--text-secondary)' }}>
+                      No pending discharge clearance requests from PRE. All active inpatients are under ongoing ward care.
+                    </td>
+                  </tr>
+                ) : (
+                  <>
+                    {pending.map((row) =>
+                      queueRow(row, (
+                        <td>
+                          <Button variant="primary" size="sm" onClick={() => setDischargeId(row.pre_request_id)}>
+                            Approve Clearance
+                          </Button>
+                        </td>
+                      )),
+                    )}
+                    {approved.map((row) =>
+                      queueRow(row, (
+                        <td>
+                          <span style={{ fontSize: 12, fontWeight: 500, color: row.billsCleared ? 'var(--status-success-fg, #1b5e20)' : 'var(--status-warning-fg, #7a5300)' }}>
+                            {row.billsCleared ? 'Bills cleared · PRE can release bed' : 'Awaiting Finance payment'}
+                          </span>
+                        </td>
+                      )),
+                    )}
+                  </>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+          <div style={{ padding: '20px 24px 16px 24px', borderBottom: '1px solid var(--border)', background: 'var(--md-surface-container)' }}>
+            <h2 className="h2" style={{ fontSize: 18 }}>Inpatient &amp; Admissions Registry</h2>
+          </div>
+
+          <div className="filter-bar" style={{ border: 'none', borderRadius: 0, borderBottom: '1px solid var(--border)', marginBottom: 0, background: 'var(--md-surface-container)', padding: '16px 24px', display: 'flex', flexWrap: 'wrap', gap: 12, alignItems: 'center' }}>
+            <input type="text" className="input filter-input" placeholder="Search by UHID, patient, bed, doctor..." style={{ flex: 2, minWidth: 240 }} id="patient-flow-search"
+              value={filters.search} onChange={(e) => setFilters((f) => ({ ...f, search: e.target.value }))} />
+            <select className="input filter-dropdown" id="patient-flow-department" style={{ flex: 1, minWidth: 160, appearance: 'auto' }}
+              value={filters.department} onChange={(e) => setFilters((f) => ({ ...f, department: e.target.value }))}>
+              <option value="">All Departments</option>
+              {departments.map((d) => <option key={d} value={d}>{d}</option>)}
+            </select>
+            <select className="input filter-dropdown" id="patient-flow-status" style={{ flex: 1, minWidth: 160, appearance: 'auto' }}
+              value={filters.status} onChange={(e) => setFilters((f) => ({ ...f, status: e.target.value }))}>
+              <option value="">All Care Statuses</option>
+              <option value="ADMITTED">Admitted / Active</option>
+              <option value="DISCHARGE_REQUESTED">Discharge Requested</option>
+              <option value="DISCHARGE_APPROVED">Discharge Approved</option>
+              <option value="DISCHARGED">Discharged</option>
+            </select>
+            <select className="input filter-dropdown" id="patient-flow-date-range" style={{ flex: 1, minWidth: 140, appearance: 'auto' }}
+              value={filters.dateRange} onChange={(e) => setFilters((f) => ({ ...f, dateRange: e.target.value }))}>
+              <option value="">All Dates</option>
+              <option value="today">Admitted Today</option>
+              <option value="last3">Last 3 Days</option>
+              <option value="last7">Last 7 Days</option>
+              <option value="older">Older Than 7 Days</option>
+            </select>
+            <button className="btn btn-outline btn-default" style={{ height: 44 }} id="patient-flow-clear"
+              onClick={() => setFilters({ search: '', department: '', status: '', dateRange: '' })}>
+              Clear Filters
+            </button>
+          </div>
+
+          <div className="table-scroll-container" style={{ maxHeight: 480, border: 'none', borderRadius: 0 }}>
+            <table className="data-table">
+              <thead>
+                <tr><th>UHID</th><th>Patient</th><th>Department</th><th>Assigned Bed</th><th>Physician</th><th>Admitted</th><th>Days Stay</th><th>Care Status</th><th>Actions</th></tr>
+              </thead>
+              <tbody id="patients-table-body">
+                {filtered.length === 0 ? (
+                  <tr><td colSpan="9" style={{ padding: 24, textAlign: 'center', color: 'var(--text-secondary)' }}>No patients match the selected filters.</td></tr>
+                ) : (
+                  filtered.map((row) => (
+                    <tr key={row.pre_request_id}>
+                      <td style={{ color: 'var(--text-secondary)', fontWeight: 500 }}>{row.patientUhid}</td>
+                      <td>
+                        <div style={{ fontWeight: 500, color: 'var(--text-primary)' }}>{row.patientName}</div>
+                        <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>{row.patientAge}</div>
+                      </td>
+                      <td style={{ color: 'var(--text-secondary)' }}>{row.department || '-'}</td>
+                      <td style={{ color: 'var(--text-secondary)' }}>{row.bedNumber}</td>
+                      <td style={{ color: 'var(--text-secondary)' }}>{row.doctorName}</td>
+                      <td style={{ color: 'var(--text-secondary)' }}>{formatDate(row.decided_at || row.created_at)}</td>
+                      <td style={{ color: 'var(--text-secondary)' }}>{daysSince(row.decided_at || row.created_at)} days</td>
+                      <td><Badge variant={statusVariant(row.status)}>{statusLabel(row.status)}</Badge></td>
+                      <td>
+                        <div style={{ display: 'flex', gap: 8 }}>
+                          <Button variant="secondary" size="sm" onClick={() => setDetailId(row.pre_request_id)}>View</Button>
+                          {row.status === 'DISCHARGE_REQUESTED' ? (
+                            <Button variant="primary" size="sm" onClick={() => setDischargeId(row.pre_request_id)}>Approve Discharge</Button>
+                          ) : row.status === 'DISCHARGED' ? (
+                            <Button variant="outline" size="sm" onClick={() => navigate('/HOM/screen-05-billing.html?uhid=' + encodeURIComponent(row.patientUhid))}>
+                              View Receipt
+                            </Button>
+                          ) : null}
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+
+          <div style={{ padding: '16px 24px', borderTop: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--md-surface-container)' }}>
+            <p className="text-small" id="patient-flow-count">
+              {data ? 'Showing ' + filtered.length + ' patient' + (filtered.length === 1 ? '' : 's') : 'Loading patients...'}
+            </p>
+          </div>
+        </div>
+      </main>
+
+      <PatientDetailModal
+        row={rows.find((r) => r.pre_request_id === detailId) || null}
+        onClose={() => setDetailId(null)}
+        onOpenDischarge={(id) => { setDetailId(null); setDischargeId(id); }}
+        onOpenBilling={(uhid) => navigate('/HOM/screen-05-billing.html?uhid=' + encodeURIComponent(uhid))}
+      />
+
+      <DischargeModal
+        row={rows.find((r) => r.pre_request_id === dischargeId) || null}
+        onClose={() => setDischargeId(null)}
+        onChanged={reload}
+      />
+    </>
+  );
+}
+

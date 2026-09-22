@@ -1,0 +1,74 @@
+'use strict';
+
+import { useEffect, useState } from 'react';
+import Modal from '../../components/layout/Modal.jsx';
+import { api } from '../../api/index.js';
+import { toast } from '../../components/feedback/feedback.js';
+
+/** Ported from the #item-dialog <dialog> in Admin/screen-03-inventory.html. */
+const BLANK = { item_name: '', category: 'Medicine', stock_quantity: '', reorder_level: '' };
+
+export default function ItemDialog({ open, onClose, onSaved }) {
+  const [f, setF] = useState(BLANK);
+  const set = (k) => (e) => setF((p) => ({ ...p, [k]: e.target.value }));
+
+  useEffect(() => {
+    if (open) setF(BLANK);
+  }, [open]);
+
+  async function handleSubmit(e) {
+    e.preventDefault();
+    const item_name = f.item_name.trim();
+    if (!item_name) return;
+    try {
+      await api.inventory.items.create({
+        item_name,
+        category: f.category,
+        stock_quantity: Number(f.stock_quantity),
+        reorder_level: Number(f.reorder_level),
+      });
+      toast(item_name + ' added to the catalog.', 'success');
+      onClose();
+      await onSaved();
+    } catch (err) {
+      toast(err.message || 'Could not add this item.', 'error');
+    }
+  }
+
+  if (!open) return null;
+
+  return (
+    <Modal open onClose={onClose}>
+      <div className="md-native-dialog" style={{ display: 'block' }}>
+        <form id="item-form" className="dialog-form" onSubmit={handleSubmit}>
+          <h2 className="md-dialog-title">Add a Catalog Item</h2>
+          <div className="md-field">
+            <label htmlFor="item-name">Item name</label>
+            <input id="item-name" required placeholder="e.g. Digital Thermometer" value={f.item_name} onChange={set('item_name')} />
+          </div>
+          <div className="md-field">
+            <label htmlFor="item-category">Category</label>
+            <select id="item-category" value={f.category} onChange={set('category')}>
+              <option value="Medicine">Medicine</option>
+              <option value="Consumable">Consumable</option>
+              <option value="Equipment">Equipment</option>
+              <option value="Linen">Linen</option>
+            </select>
+          </div>
+          <div className="md-field">
+            <label htmlFor="item-stock">Starting stock</label>
+            <input id="item-stock" type="number" min="0" required placeholder="e.g. 50" value={f.stock_quantity} onChange={set('stock_quantity')} />
+          </div>
+          <div className="md-field">
+            <label htmlFor="item-reorder">Reorder level</label>
+            <input id="item-reorder" type="number" min="0" required placeholder="e.g. 10" value={f.reorder_level} onChange={set('reorder_level')} />
+          </div>
+          <div className="md-dialog-actions">
+            <button type="button" className="btn btn-outline btn-default" id="item-cancel" onClick={onClose}>Cancel</button>
+            <button type="submit" className="btn btn-primary btn-default">Save</button>
+          </div>
+        </form>
+      </div>
+    </Modal>
+  );
+}

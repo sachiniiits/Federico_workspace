@@ -1,0 +1,31 @@
+/*
+ * Extracted verbatim from the inline <style> block of
+ * front-end/HOM/screen-03-patient-flow.html. These rules were page-scoped only because
+ * each legacy page loaded alone; the matching route chunk imports this file
+ * so the scoping still holds (DEC-5).
+ */
+        /* .dashboard-container / .header-section / .data-table (base+th/td/
+           hover) / .filter-bar (base) now live once in global.css — this
+           screen adds only its own card-style table wrapper and the extra
+           filter-bar gap below. */
+        .table-container { background: #fff; border: 1px solid var(--border); border-radius: var(--radius-lg); }
+
+        /* Filter Bar */
+        .filter-bar { gap: 12px; }
+        .filter-input { flex: 1; min-width: 200px; }
+        .filter-dropdown { height: 44px; padding: 0 16px; border-radius: var(--radius-base); border: 1px solid var(--border); background: #fff; color: var(--text-secondary); font-size: 14px; cursor: pointer; display: flex; align-items: center; gap: 8px; }
+        .filter-dropdown:hover { background: #F8FAFC; }
+
+        /* .modal-overlay/.modal-content/.modal-header/.modal-body/.modal-footer
+           now live once in global.css (Material You dialog styling) instead
+           of being duplicated in every screen's own <style> block. */
+
+        /* Detail Modal Specifics */
+        .avatar-circle { width: 48px; height: 48px; border-radius: 50%; background: var(--primary); color: white; display: flex; align-items: center; justify-content: center; font-size: 18px; font-weight: 600; }
+        .modal-tabs { display: flex; gap: 4px; margin-top: 16px; border-bottom: 1px solid var(--border); }
+        .modal-tab { padding: 8px 16px; font-size: 14px; font-weight: 500; color: var(--text-secondary); cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -1px; transition: all 0.2s; background: none; border-top: none; border-left: none; border-right: none;}
+        .modal-tab:hover { color: var(--text-primary); }
+        .modal-tab.active { color: var(--primary); border-bottom-color: var(--primary); }
+        .tab-content-panel { display: none; }
+        .tab-content-panel.active { display: block; }
+    
