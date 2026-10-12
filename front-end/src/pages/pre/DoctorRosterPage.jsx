@@ -56,10 +56,6 @@ export default function DoctorRosterPage() {
   const roster = data || [];
   const specs = Array.from(new Set(roster.map((d) => d.specialization).filter(Boolean))).sort();
 
-  const total = roster.length;
-  const available = roster.filter((d) => d.status === 'Available').length;
-  const unavailable = roster.filter((d) => d.status !== 'Available').length;
-
   const q = query.trim().toLowerCase();
   const filtered = roster.filter((d) => {
     if (specFilter && d.specialization !== specFilter) return false;
@@ -77,21 +73,6 @@ export default function DoctorRosterPage() {
 
   return (
     <>
-      <div className="cards">
-        <div className="card">
-          <h3>Total Specialists</h3>
-          <p id="kpi-total-doctors">{total} Doctors</p>
-        </div>
-        <div className="card">
-          <h3>Available for Consultations</h3>
-          <p id="kpi-available-doctors" style={{ color: 'var(--status-success, #15803d)' }}>{available} Available</p>
-        </div>
-        <div className="card">
-          <h3>In Surgery / On Leave</h3>
-          <p id="kpi-unavailable-doctors" style={{ color: 'var(--status-warning-fg, #b45309)' }}>{unavailable} Engaged</p>
-        </div>
-      </div>
-
       <div className="container">
         <div className="directory-header">
           <div className="directory-title-group">

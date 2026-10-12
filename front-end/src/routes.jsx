@@ -24,7 +24,11 @@ const HomInventoryPage = lazy(() => import('./pages/hom/InventoryPage.jsx'));
 
 const PreLayout = lazy(() => import('./pages/pre/PreLayout.jsx'));
 const PreDashboardPage = lazy(() => import('./pages/pre/PreDashboardPage.jsx'));
-const PreIntakeHubPage = lazy(() => import('./pages/pre/IntakeHubPage.jsx'));
+const PreRequestsPage = lazy(() => import('./pages/pre/RequestsPage.jsx'));
+const PreAdmittedPage = lazy(() => import('./pages/pre/AdmittedPage.jsx'));
+const PreHomCoordinationPage = lazy(() => import('./pages/pre/HomCoordinationPage.jsx'));
+const PreDischargePage = lazy(() => import('./pages/pre/DischargePage.jsx'));
+const PreRejectedPage = lazy(() => import('./pages/pre/RejectedPage.jsx'));
 const PrePatientRecordsPage = lazy(() => import('./pages/pre/PatientRecordsPage.jsx'));
 const PreDoctorRosterPage = lazy(() => import('./pages/pre/DoctorRosterPage.jsx'));
 const PreAppointmentPage = lazy(() => import('./pages/pre/AppointmentPage.jsx'));
@@ -130,13 +134,11 @@ const router = createBrowserRouter([
         element: guarded('PRE', <PreLayout />),
         children: [
           { path: '/PRE/pages/PRE.html', element: L(<PreDashboardPage />) },
-          // The Intake Hub's three tabs. The five legacy intake URLs all still
-          // resolve, each to the tab that now holds its table.
-          { path: '/PRE/pages/request.html', element: L(<PreIntakeHubPage tab="triage" />) },
-          { path: '/PRE/pages/admitted.html', element: L(<PreIntakeHubPage tab="tracking" />) },
-          { path: '/PRE/pages/hom.html', element: L(<PreIntakeHubPage tab="tracking" />) },
-          { path: '/PRE/pages/discharge.html', element: L(<PreIntakeHubPage tab="completed" />) },
-          { path: '/PRE/pages/rejected.html', element: L(<PreIntakeHubPage tab="completed" />) },
+          { path: '/PRE/pages/request.html', element: L(<PreRequestsPage />) },
+          { path: '/PRE/pages/admitted.html', element: L(<PreAdmittedPage />) },
+          { path: '/PRE/pages/hom.html', element: L(<PreHomCoordinationPage />) },
+          { path: '/PRE/pages/discharge.html', element: L(<PreDischargePage />) },
+          { path: '/PRE/pages/rejected.html', element: L(<PreRejectedPage />) },
           { path: '/PRE/pages/patient-records.html', element: L(<PrePatientRecordsPage />) },
           { path: '/PRE/pages/doctor.html', element: L(<PreDoctorRosterPage />) },
           // Both casings resolve (DEC-7). Every link in the app uses the
