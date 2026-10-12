@@ -4,10 +4,6 @@ import { useState } from 'react';
 import { api } from '../../api/index.js';
 import { useApi } from '../../hooks/useApi.js';
 import { useDocumentTitle } from '../../hooks/useDocumentTitle.js';
-import PageHeader from '../../components/layout/PageHeader.jsx';
-import StatCard from '../../components/ui/StatCard.jsx';
-import SearchToolbar from '../../components/ui/SearchToolbar.jsx';
-import EmptyState from '../../components/ui/EmptyState.jsx';
 import { to12Hour } from './preHelpers.js';
 
 /**
@@ -60,10 +56,6 @@ export default function DoctorRosterPage() {
   const roster = data || [];
   const specs = Array.from(new Set(roster.map((d) => d.specialization).filter(Boolean))).sort();
 
-  const total = roster.length;
-  const available = roster.filter((d) => d.status === 'Available').length;
-  const unavailable = roster.filter((d) => d.status !== 'Available').length;
-
   const q = query.trim().toLowerCase();
   const filtered = roster.filter((d) => {
     if (specFilter && d.specialization !== specFilter) return false;
@@ -81,60 +73,27 @@ export default function DoctorRosterPage() {
 
   return (
     <>
-      <div className="cards">
-        <StatCard
-          label="Total Specialists"
-          value={total}
-          sub={`${total} Doctors`}
-        />
-        <StatCard
-          label="Available for Consultations"
-          value={available}
-          sub={`${available} Available`}
-          variant="success"
-        />
-        <StatCard
-          label="In Surgery / On Leave"
-          value={unavailable}
-          sub={`${unavailable} Engaged`}
-          variant="warning"
-        />
-      </div>
-
       <div className="container">
-        <PageHeader
-          title="Doctor Availability & Rosters"
-          subtitle="Review active physician duty hours, consultation slots, and departmental specializations."
-          actions={
-            <SearchToolbar
-              searchQuery={query}
-              onSearchChange={setQuery}
-              placeholder="Search doctor, dept, ID..."
-              filters={[
-                {
-                  id: 'specialization',
-                  value: specFilter,
-                  onChange: setSpecFilter,
-                  options: [
-                    { value: '', label: 'All Specializations' },
-                    ...specs.map((s) => ({ value: s, label: s })),
-                  ],
-                },
-                {
-                  id: 'status',
-                  value: statusFilter,
-                  onChange: setStatusFilter,
-                  options: [
-                    { value: '', label: 'All Statuses' },
-                    { value: 'Available', label: 'Available' },
-                    { value: 'In Surgery', label: 'In Surgery' },
-                    { value: 'Unavailable', label: 'Unavailable / Off-Duty' },
-                  ],
-                },
-              ]}
-            />
-          }
-        />
+        <div className="directory-header">
+          <div className="directory-title-group">
+            <h2>Doctor Availability &amp; Rosters</h2>
+            <p>Review active physician duty hours, consultation slots, and departmental specializations.</p>
+          </div>
+          <div className="directory-toolbar">
+            <input type="text" id="doctorSearchInput" placeholder="Search doctor, dept, ID..." className="directory-search-input"
+              value={query} onChange={(e) => setQuery(e.target.value)} />
+            <select id="filterSpecialization" className="directory-filter-select" value={specFilter} onChange={(e) => setSpecFilter(e.target.value)}>
+              <option value="">All Specializations</option>
+              {specs.map((s) => <option key={s} value={s}>{s}</option>)}
+            </select>
+            <select id="filterStatus" className="directory-filter-select" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
+              <option value="">All Statuses</option>
+              <option value="Available">Available</option>
+              <option value="In Surgery">In Surgery</option>
+              <option value="Unavailable">Unavailable / Off-Duty</option>
+            </select>
+          </div>
+        </div>
 
         <div className="table-container" style={{ margin: 0 }}>
           <table>
@@ -150,9 +109,9 @@ export default function DoctorRosterPage() {
             </thead>
             <tbody id="doctorTable">
               {error ? (
-                <EmptyState asTableRow colSpan={6} title="Could not load doctor roster" message={error.message} />
+                <tr><td colSpan="6" style={{ color: 'var(--status-error)' }}>Could not load doctor roster: {error.message}</td></tr>
               ) : filtered.length === 0 ? (
-                <EmptyState asTableRow colSpan={6} title="No matching doctors found" />
+                <tr><td colSpan="6" style={{ textAlign: 'center', padding: 32, color: 'var(--color-muted-fg)' }}>No matching doctors found</td></tr>
               ) : (
                 filtered.map((d) => {
                   const badge =
