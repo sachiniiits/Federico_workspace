@@ -49,7 +49,7 @@ const TRANSITIONS = {
     DISCHARGE_APPROVED: ['HOM'],
   },
   DISCHARGE_APPROVED: {
-    DISCHARGED: ['PRE'], // PRE's final sign-off — releases the bed, see below
+    DISCHARGED: ['PRE', 'HOM'], // PRE or HOM's final sign-off — releases the bed, see below
   },
 };
 

@@ -181,12 +181,17 @@ export function PatientStoreProvider({ children }) {
     return true;
   }, [state.patient, refresh]);
 
-  const payBill = useCallback(async (bill, paymentMode) => {
+  const payBill = useCallback(async (bill, paymentMode, referenceId) => {
     if (!bill || !bill.ledgerId || bill.status === 'paid') return false;
+    const ref =
+      referenceId ||
+      ('TXN' + (Date.now().toString().slice(-8) + Math.floor(Math.random() * 900 + 100)));
     await api.billing.payments.create({
       ledger_id: bill.ledgerId,
       amount_paid: bill.youPay,
       payment_mode: paymentMode || 'UPI',
+      reference_id: ref,
+      transaction_id: ref,
     });
     await refresh();
     return true;

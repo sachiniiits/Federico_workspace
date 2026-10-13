@@ -24,6 +24,8 @@ const createPaymentRules = [
   { field: 'ledger_id', checks: ['isNotEmpty', 'isInt'] },
   { field: 'amount_paid', checks: ['isNumber'] },
   { field: 'payment_mode', checks: ['isNotEmpty', 'isString'] },
+  { field: 'reference_id', checks: ['isString'], optional: true },
+  { field: 'transaction_id', checks: ['isString'], optional: true },
 ];
 
 const createDischargeSummaryRules = [

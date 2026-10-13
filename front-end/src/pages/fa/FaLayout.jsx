@@ -1,10 +1,10 @@
 'use strict';
 
-import { useCallback, useMemo, useRef, useState } from 'react';
+import { Fragment, useCallback, useMemo, useRef, useState } from 'react';
 import { useSession } from '../../auth/useSession.js';
 import { useDocumentTitle } from '../../hooks/useDocumentTitle.js';
 import { usePageStyles } from '../../hooks/usePageStyles.js';
-import AppNavbar from '../../components/layout/AppNavbar.jsx';
+import ModuleLock from '../../components/layout/ModuleLock.jsx';
 import { FaContext } from './FaContext.jsx';
 import { useHashRoute, DEFAULT_ROUTE } from './useHashRoute.js';
 import { toast } from '../../components/feedback/feedback.js';
@@ -15,10 +15,18 @@ import baseCss from '../../styles/fa/base.css?inline';
 import layoutCss from '../../styles/fa/layout.css?inline';
 import componentsCss from '../../styles/fa/components.css?inline';
 
+/**
+ * The three FA views:
+ *  - Ledger            running ledgers: billing queues + line items + manual charges
+ *  - Charges           approve HOM-staged charges (leaders) into ledgers
+ *  - EOD & Settlement  EOD bills, discharge settlement / payment, receipts
+ * The former Dashboard, Discharge and Receipts hashes alias onto these
+ * (useHashRoute.js#ROUTE_ALIASES).
+ */
 const LINKS = [
-  { href: '/FA/fa-dashboard.html#/ledger', label: 'Ledger' },
-  { href: '/FA/fa-dashboard.html#/charges', label: 'Charges' },
-  { href: '/FA/fa-dashboard.html#/eod', label: 'EOD & Settlement' },
+  { route: '#/ledger', label: 'Ledger', module: 'BILLING' },
+  { route: '#/charges', label: 'Charges', module: 'BILLING' },
+  { route: '#/eod', label: 'EOD & Settlement', module: 'BILLING' },
 ];
 
 /**
@@ -26,7 +34,7 @@ const LINKS = [
  * ORG_ADMIN, so the per-role part never excluded anything and the only real
  * gate was hasModuleAccess('FA', actor). That is what this reproduces.
  */
-const ROUTES = ['ledger', 'charges', 'eod'];
+const ROUTES = LINKS.map((l) => l.route.replace('#/', ''));
 
 /** The ids a view actually renders an inline error slot for. */
 const FORM_ERROR_IDS = ['discharge-payment-error'];
@@ -90,6 +98,8 @@ export default function FaLayout() {
     window.location.href = '/login/login-page.html';
   }
 
+  const activeRoute = mainRoute.replace('#/', '') || DEFAULT_ROUTE.replace('#/', '');
+
   let view;
   if (!canAccess(mainRoute)) {
     view = null;
@@ -106,18 +116,50 @@ export default function FaLayout() {
 
   return (
     <FaContext.Provider value={ctx}>
-    <AppNavbar
-      roleName={actor === 'HOM' ? 'FA (Finance Control)' : 'FA'}
-      brandName="Federico"
-      hospitalName={tenant?.organization_name}
-      links={LINKS}
-      onLogout={onLogout}
-    />
+      <header className="header">
+        <div className="logo-group">
+          <div className="logo-box">F</div>
+          <strong>Federico</strong>
+          {/* rbac.js#applyTenantBranding appended this once, since the FA
+              header had no subtitle element of its own. */}
+          {tenant?.organization_name ? (
+            <span className="tenant-org-label">{tenant.organization_name}</span>
+          ) : null}
+        </div>
+        <nav className="nav-links">
+          {LINKS.map((link) => {
+            const el = (
+              <span
+                className={'nav-link' + (activeRoute === link.route.replace('#/', '') ? ' active' : '')}
+                style={canAccess(link.route) ? undefined : { display: 'none' }}
+                onClick={() => navigate(link.route)}
+              >
+                {link.label}
+              </span>
+            );
+            return link.module ? (
+              <ModuleLock key={link.route} module={link.module}>
+                {el}
+              </ModuleLock>
+            ) : (
+              <Fragment key={link.route}>{el}</Fragment>
+            );
+          })}
+        </nav>
+        <div className="header-actions">
+          <span id="role-indicator" className="role-indicator">
+            {actor === 'HOM' ? 'superUser · Finance Control' : 'admin · Finance Operations'}
+          </span>
+          <button id="logout-btn" className="logout-btn" onClick={onLogout}>
+            Log Out
+          </button>
+        </div>
+      </header>
 
-    <main id="app" className="main-content">
-      {view}
-    </main>
-  </FaContext.Provider>
-);
+      <main id="app" className="main-content">
+        {view}
+      </main>
+    </FaContext.Provider>
+  );
 }
 

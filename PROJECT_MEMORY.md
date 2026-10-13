@@ -296,7 +296,23 @@ The following 7 paths are strictly prohibited from being read, parsed, or access
       - Loads demo tabs and credentials dynamically via `api.auth.demoAccounts()`.
       - Selecting a demo account automatically sets the matching `organization_id` so clicking Sign In logs directly into that hospital without dropdown popups or mismatch errors.
       - Shows the hospital selection dropdown only if a patient is registered across multiple hospitals.
-  - Automated Verification: 23 backend test suites passed (145 tests), 0 lint errors/warnings with `oxlint` across 153 files, and Vite production bundle passed cleanly (199 modules).
+- **2026-10-13**: **Refined Discharge Workflow (PRE → HOM → FA → HOM → PRE)**:
+  - Enforced strict discharge progression without breaking existing architecture or models:
+    - `PRE` requests discharge (`ADMITTED -> DISCHARGE_REQUESTED`). Bed remains `OCCUPIED`.
+    - `HOM` approves initial clearance (`DISCHARGE_REQUESTED -> DISCHARGE_APPROVED`), requesting FA processing. Bed remains `OCCUPIED`.
+    - `FA` prepares discharge summary and sends bill (`api.billing.dischargeSummary.create`, `api.billing.ledger.dispatch`). Bed remains `OCCUPIED`.
+    - `Patient` receives combined discharge summary, itemized bill, and multi-method payment options (UPI QR Code, Payment Link, Card, Net Banking).
+    - `Patient` pays online OR `FA` records in-person counter payment (`recordInPersonPayment` supporting Cash, UPI, and Card).
+    - Payment generates official receipt and records transaction reference ID (`reference_id` / `transaction_id`). Ledger status becomes `PAID`.
+    - In `SettlementSection`, FA verifies payment details (Status: `PAID`, Amount, Mode, Transaction ID, Receipt view) and clicks "Discharge Patient" to submit to HOM for final approval (`admission.fa_discharge_submitted = true`, `status = 'DISCHARGE_PENDING_APPROVAL'`). FA cannot submit discharge while payment is pending.
+    - `HOM` in `PatientFlowPage` reviews cleared discharges with status `"Discharge Pending Approval"` and clicks `"Accept Final Discharge"`.
+    - Final acceptance transitions pre-request and admission to `DISCHARGED` and physically releases the bed (`AVAILABLE`). Bed is never released before this final HOM acceptance step.
+    - `Patient` portal (`BillingPage` & `DashboardPage`) features a dedicated `PatientDischargeBanner` clearly communicating all 3 states:
+      1. Before payment: `DISCHARGE STATUS: PAYMENT PENDING` + `[View Discharge Summary]` & `[Pay Now]`.
+      2. After payment: `PAYMENT STATUS: ✓ PAID` & `DISCHARGE STATUS: DISCHARGE PENDING FINAL APPROVAL` + `[View Discharge Summary]` & `[View Receipt]`.
+      3. After HOM acceptance: `✓ PATIENT DISCHARGED` + `[View Final Discharge Summary]` & `[Download Receipt]`.
+  - Reused existing components (`DialogShell`, `Button`, `Badge`, `Card`, `EmptyState`, etc.) from the components directory with zero duplication.
+  - Verification: 23 backend Jest test suites passed (146 tests passed), `oxlint` passed with 0 errors, and Vite build succeeded with 0 errors (205 modules transformed).
 
 
 

@@ -5,8 +5,6 @@ import { useApi } from '../../hooks/useApi.js';
 import { useFa } from './FaContext.jsx';
 import { loadBillingOverview, loadLedgerEntries, formatCurrency } from './faHelpers.js';
 import * as actions from './faActions.js';
-import PageHeader from '../../components/layout/PageHeader.jsx';
-import EmptyState from '../../components/ui/EmptyState.jsx';
 import ViewFrame from './ViewFrame.jsx';
 import * as S from './faStyles.js';
 
@@ -78,10 +76,7 @@ export default function ChargesView() {
     <ViewFrame loading={loading} error={error}>
       {data ? (
         <>
-          <PageHeader
-            title="Charges"
-            subtitle="Review and approve departmental billing items before posting to active patient ledgers."
-          />
+          <h2 style={S.pageTitle}>Charges</h2>
 
           <div className="card" style={S.cardFlush}>
             <div
@@ -112,7 +107,11 @@ export default function ChargesView() {
               </thead>
               <tbody>
                 {data.allCharges.length === 0 ? (
-                  <EmptyState asTableRow colSpan={7} title="No charges posted yet." />
+                  <tr>
+                    <td colSpan="7" style={S.emptyCell}>
+                      No charges posted yet.
+                    </td>
+                  </tr>
                 ) : (
                   data.allCharges.map((c) => (
                     <tr key={c.id} style={{ borderBottom: '1px solid var(--color-border)' }}>
