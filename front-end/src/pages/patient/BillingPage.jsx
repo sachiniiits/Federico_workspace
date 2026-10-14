@@ -4,13 +4,14 @@ import { useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { usePatientStore } from './usePatientStore.js';
 import { useDocumentTitle } from '../../hooks/useDocumentTitle.js';
-import { toast, selectOne } from '../../components/feedback/feedback.js';
+import { toast } from '../../components/feedback/feedback.js';
 import PageHeader from '../../components/layout/PageHeader.jsx';
 import StatCard from '../../components/ui/StatCard.jsx';
 import TabNav from '../../components/ui/TabNav.jsx';
 import EmptyState from '../../components/ui/EmptyState.jsx';
 import DocumentRow from './DocumentRow.jsx';
-import BillDetailsModal from './BillDetailsModal.jsx';
+import BillDetailsModal, { PatientPaymentModal } from './BillDetailsModal.jsx';
+import PatientDischargeBanner from './PatientDischargeBanner.jsx';
 import { openInvoiceDigitalCopy, openBillingDigitalCopy } from './patientInvoiceCopy.js';
 import { usePageStyles } from '../../hooks/usePageStyles.js';
 import patientBillingCss from '../../styles/patient/patient-billing.css?inline';
@@ -29,11 +30,12 @@ function EmptySection({ message }) {
 export default function BillingPage() {
   usePageStyles(patientBillingCss);
   useDocumentTitle('My Bills & Receipts – Federico Hospital Portal');
-  const { profile, bills, visits, billingSections, getBillingDocumentByRef, payBill } =
+  const { profile, bills, visits, billingSections, getBillingDocumentByRef, payBill, raw } =
     usePatientStore();
 
   const [activeTab, setActiveTab] = useState('invoices');
   const [detailBill, setDetailBill] = useState(null);
+  const [payingBill, setPayingBill] = useState(null);
   const [payingLedger, setPayingLedger] = useState(null);
 
   // ?bill=<id> (from the dashboard's Bill Summary) opens that invoice directly.
@@ -58,26 +60,8 @@ export default function BillingPage() {
     .filter((b) => b.status !== 'paid')
     .reduce((sum, b) => sum + Number(b.youPay || 0), 0);
 
-  async function selectPaymentMethod(amount) {
-    return selectOne({
-      title: 'Pay ₹' + Number(amount || 0).toLocaleString('en-IN'),
-      options: ['UPI', 'CARD', 'NETBANKING', 'CASH'],
-    });
-  }
-
-  async function payNow(bill) {
-    const method = await selectPaymentMethod(bill.youPay);
-    if (!method) return;
-
-    setPayingLedger(bill.ledgerId);
-    try {
-      await payBill(bill, method);
-      toast('Payment successful! Receipt has been generated.', 'success');
-    } catch (err) {
-      toast(err?.message || 'Payment processing failed.', 'warning');
-    } finally {
-      setPayingLedger(null);
-    }
+  function payNow(bill) {
+    setPayingBill(bill);
   }
 
   function printInvoice(bill) {
@@ -112,6 +96,15 @@ export default function BillingPage() {
         <PageHeader
           title="My Bills & Invoices"
           subtitle="Review your itemized hospital bills, make secure online payments, track official receipts, and access discharge financial records."
+        />
+
+        <PatientDischargeBanner
+          bills={bills}
+          raw={raw}
+          billingSections={billingSections}
+          onPay={(bill) => payNow(bill)}
+          onViewSummary={(doc) => viewDocument(doc)}
+          onViewReceipt={(doc) => viewDocument(doc)}
         />
 
         <section className="kpi-grid">
@@ -365,10 +358,26 @@ export default function BillingPage() {
         onClose={closeDetail}
         onPrint={printInvoice}
         onPay={(bill) => {
-          // openBillModal()'s Pay handler closes the dialog before asking for
-          // the payment method.
           closeDetail();
           payNow(bill);
+        }}
+      />
+
+      <PatientPaymentModal
+        open={Boolean(payingBill)}
+        bill={payingBill}
+        profile={profile}
+        onClose={() => setPayingBill(null)}
+        onConfirmPay={async (bill, method, refId) => {
+          setPayingLedger(bill.ledgerId);
+          try {
+            await payBill(bill, method, refId);
+            toast(`Payment confirmed via ${method}! Receipt generated.`, 'success');
+          } catch (err) {
+            toast(err?.message || 'Payment processing failed.', 'warning');
+          } finally {
+            setPayingLedger(null);
+          }
         }}
       />
     </>

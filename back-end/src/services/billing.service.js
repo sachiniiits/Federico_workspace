@@ -127,12 +127,19 @@ function createPayment(payment) {
     }
   }
 
+  const referenceId =
+    payment.reference_id ||
+    payment.transaction_id ||
+    ('TXN' + (Date.now().toString().slice(-8) + Math.floor(Math.random() * 900 + 100)));
+
   const newPayment = {
     payment_id:
       maxId(dataStore.payments, 'payment_id') + 1 || 901,
     ledger_id: ledgerId,
     amount_paid: Number(payment.amount_paid),
     payment_mode: payment.payment_mode || 'CASH',
+    reference_id: referenceId,
+    transaction_id: referenceId,
     payment_time: new Date().toISOString(),
     organization_id: payment.organization_id || ledger.organization_id || null,
     hospital_id: payment.hospital_id || ledger.hospital_id || null,
@@ -161,6 +168,8 @@ function createPayment(payment) {
     patient_id: admission ? admission.patient_id : null,
     amount: newPayment.amount_paid,
     payment_mode: newPayment.payment_mode,
+    reference_id: referenceId,
+    transaction_id: referenceId,
     organization_id: newPayment.organization_id || null,
     hospital_id: newPayment.hospital_id || null,
     generated_at: new Date().toISOString(),
