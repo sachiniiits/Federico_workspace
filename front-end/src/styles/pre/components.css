@@ -1634,3 +1634,596 @@ tr:hover {
     grid-template-columns: 1fr;
   }
 }
+
+/* =====================================================
+   PRE SHARED UTILITIES
+   Classes extracted from inline styles across all PRE
+   pages. No inline styles should exist in PRE JSX.
+   ===================================================== */
+
+/* ── Section header row: title + search bar side by side ── */
+.pre-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 16px 20px 12px;
+}
+
+.pre-section-title {
+  margin: 0;
+  font-family: var(--font-heading);
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--color-fg);
+}
+
+/* ── Shared search input for all PRE sections ── */
+.pre-search-input {
+  height: 38px;
+  padding: 0 16px;
+  border: 1px solid var(--md-outline, #cbd5e1);
+  border-radius: var(--radius-full, 9999px);
+  font-size: 13px;
+  font-family: var(--font-body);
+  outline: none;
+  min-width: 200px;
+  max-width: 280px;
+  background: var(--md-surface-container-low, #f8fafc);
+  color: var(--color-fg);
+  box-sizing: border-box;
+  transition: border-color var(--duration-fast) ease,
+              background   var(--duration-fast) ease,
+              box-shadow   var(--duration-fast) ease;
+}
+
+.pre-search-input:focus {
+  border-color: var(--md-primary, #6750a4);
+  background: var(--md-surface, #ffffff);
+  box-shadow: 0 0 0 3px rgba(103, 80, 164, 0.12);
+}
+
+/* ── Empty state cell ── */
+.pre-empty-state {
+  text-align: center;
+  padding: 28px 24px;
+  color: var(--color-muted-fg);
+  font-size: 13px;
+  font-style: italic;
+}
+
+/* ── Dashboard: action button cluster in table cell ── */
+.pre-action-group {
+  display: flex;
+  gap: 6px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+/* ── Dashboard: "Awaiting HOM" muted label ── */
+.pre-awaiting-label {
+  color: var(--color-muted-fg);
+  font-size: 12px;
+  font-style: italic;
+}
+
+/* ── Disabled approve button (bills not cleared) ── */
+.btn.approve:disabled,
+.btn.approve[aria-disabled="true"] {
+  opacity: 0.5;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+/* =====================================================
+   DISCHARGE PAGE — side-by-side KPI card layout
+   ===================================================== */
+
+/* Two discharge cards sit next to each other on desktop */
+.discharge-cards-row {
+  display: flex;
+  gap: 20px;
+  padding: 20px;
+  align-items: flex-start;
+  flex-wrap: wrap;
+}
+
+/* Each card fills equal space */
+.discharge-card {
+  flex: 1 1 400px;
+  background: var(--md-surface-container);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-1);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Compact record count below the header */
+.discharge-card-count {
+  padding: 0 20px 10px;
+  font-size: 12px;
+  color: var(--color-muted-fg);
+  font-weight: 500;
+  letter-spacing: 0.04em;
+}
+
+/* Table wrapper inside each discharge card */
+.discharge-table-wrapper {
+  margin: 0;
+  border-radius: 0;
+  box-shadow: none;
+  flex: 1;
+  overflow-x: auto;
+}
+
+/* HOM status text for "Awaiting HOM" column */
+.discharge-hom-awaiting {
+  color: var(--status-warning, #b45309);
+  font-weight: 500;
+}
+
+/* Finance clearance status cells */
+.discharge-bills-cleared {
+  color: var(--status-success-fg, #15803d);
+  font-weight: 500;
+}
+
+.discharge-bills-pending {
+  color: var(--status-warning, #b45309);
+  font-weight: 500;
+}
+
+/* Stack cards vertically on narrow screens */
+@media (max-width: 900px) {
+  .discharge-cards-row {
+    flex-direction: column;
+  }
+
+  .discharge-card {
+    flex: 1 1 auto;
+    width: 100%;
+  }
+}
+
+/* =====================================================
+   HOM COORDINATION PAGE — inline style replacements
+   ===================================================== */
+
+/* Wrapper with extra horizontal margin */
+.hom-coord-container {
+  margin: 24px 20px;
+}
+
+/* Queue section sub-heading */
+.hom-queue-title {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--color-fg);
+}
+
+/* Right side of queue header: hint + search */
+.hom-queue-controls {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+/* "Bed assignment is handled in HOM" hint text */
+.hom-queue-hint {
+  font-size: 12px;
+  color: var(--color-muted-fg);
+}
+
+/* Table container with no extra margin (sits inside hom-coord-container) */
+.hom-table-wrapper {
+  margin: 0;
+}
+
+/* Column alignment helpers */
+.col-left {
+  text-align: left;
+  padding: 12px 16px;
+}
+
+.col-center {
+  text-align: center;
+  padding: 12px 14px;
+}
+
+/* UHID accent text */
+.hom-uhid-text {
+  color: var(--md-primary, #0f766e);
+}
+
+/* ── Priority pills ── */
+.hom-priority-pill {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 12px;
+  border: 1px solid transparent;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.hom-priority-critical {
+  background: #fef2f2;
+  border-color: #fecaca;
+  color: #991b1b;
+}
+
+.hom-priority-high {
+  background: #fef3c7;
+  border-color: #fde68a;
+  color: #b45309;
+}
+
+.hom-priority-normal {
+  background: #f8fafc;
+  border-color: #e2e8f0;
+  color: #475569;
+}
+
+/* ── HOM allocation status badges ── */
+.hom-status-badge {
+  display: inline-block;
+  font-size: 11px;
+  padding: 3px 8px;
+  border-radius: 12px;
+  border: 1px solid transparent;
+}
+
+.hom-status-allocated {
+  background: #dcfce7;
+  color: #15803d;
+  border-color: #bbf7d0;
+}
+
+.hom-status-denied {
+  background: #fef2f2;
+  color: #991b1b;
+  border-color: #fecaca;
+}
+
+.hom-status-pending {
+  background: #fef3c7;
+  color: #b45309;
+  border-color: #fde68a;
+}
+
+/* ── Bed cell states ── */
+.hom-bed-allocated {
+  color: var(--md-primary, #0f766e);
+}
+
+.hom-bed-na {
+  color: #6b7280;
+  font-style: italic;
+}
+
+.hom-bed-empty {
+  color: var(--color-muted-fg);
+  font-size: 12px;
+}
+
+/* =====================================================
+   DISCHARGE PAGE — clickable KPI overview cards
+   Three-state view: overview | pending detail | approved detail
+   ===================================================== */
+
+/* ── Overview wrapper ── */
+.disch-overview-wrapper {
+  padding: 20px;
+}
+
+.disch-overview-heading {
+  margin: 0 0 20px;
+  font-family: var(--font-heading);
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--color-fg);
+}
+
+/* ── KPI card row — two cards side by side ── */
+.disch-kpi-row {
+  display: flex;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+/* ── Individual KPI card — styled as a clickable button ── */
+.disch-kpi-card {
+  flex: 1 1 260px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  padding: 28px 28px 24px;
+  background: var(--md-surface-container);
+  border: 2px solid transparent;
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-1);
+  cursor: pointer;
+  text-align: left;
+  font-family: var(--font-body);
+  transition:
+    box-shadow    var(--duration-base) var(--ease-standard),
+    border-color  var(--duration-base) var(--ease-standard),
+    transform     var(--duration-fast) var(--ease-standard),
+    background    var(--duration-base) var(--ease-standard);
+}
+
+.disch-kpi-card:hover {
+  box-shadow: var(--shadow-3);
+  transform: translateY(-3px);
+}
+
+.disch-kpi-card:active {
+  transform: scale(0.98);
+}
+
+/* Pending variant — amber accent on hover/focus */
+.disch-kpi-card--pending:hover,
+.disch-kpi-card--pending:focus-visible {
+  border-color: var(--status-warning, #d97706);
+  background: color-mix(in srgb, var(--status-warning, #d97706) 6%, var(--md-surface-container));
+}
+
+.disch-kpi-card--pending:focus-visible {
+  outline: none;
+}
+
+/* Approved variant — green accent on hover/focus */
+.disch-kpi-card--approved:hover,
+.disch-kpi-card--approved:focus-visible {
+  border-color: var(--status-success, #2e7d32);
+  background: color-mix(in srgb, var(--status-success, #2e7d32) 6%, var(--md-surface-container));
+}
+
+.disch-kpi-card--approved:focus-visible {
+  outline: none;
+}
+
+/* Emoji icon */
+.disch-kpi-icon {
+  font-size: 28px;
+  line-height: 1;
+  margin-bottom: 4px;
+}
+
+/* Card label */
+.disch-kpi-label {
+  font-family: var(--font-heading);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-fg);
+  letter-spacing: 0.01em;
+}
+
+/* Large numeric count */
+.disch-kpi-count {
+  font-family: var(--font-heading);
+  font-size: 40px;
+  font-weight: 700;
+  color: var(--md-primary, #6750a4);
+  line-height: 1.1;
+}
+
+/* Small descriptive sub-text */
+.disch-kpi-sub {
+  font-size: 12px;
+  color: var(--color-muted-fg);
+  line-height: 1.4;
+}
+
+/* Stack KPI cards on small screens */
+@media (max-width: 640px) {
+  .disch-kpi-row {
+    flex-direction: column;
+  }
+
+  .disch-kpi-card {
+    flex: 1 1 auto;
+    width: 100%;
+  }
+
+  .disch-kpi-count {
+    font-size: 32px;
+  }
+}
+
+/* ── Detail view wrapper ── */
+.disch-detail-wrapper {
+  padding: 20px;
+}
+
+/* Top bar: Back button + section header in one row */
+.disch-detail-topbar {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+
+/* Back button — shrink-0 so it never wraps away */
+.disch-back-btn {
+  flex-shrink: 0;
+  align-self: center;
+  white-space: nowrap;
+}
+
+/* Section header grows to fill remaining width */
+.disch-detail-header {
+  flex: 1;
+  padding: 0;
+}
+
+/* Emoji icon inline in the heading */
+.disch-detail-icon {
+  margin-right: 8px;
+}
+
+/* Count chip beside the heading */
+.disch-count-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-left: 10px;
+  padding: 2px 10px;
+  border-radius: var(--radius-full);
+  background: var(--md-secondary-container);
+  color: var(--md-on-secondary-container);
+  font-size: 12px;
+  font-weight: 600;
+  vertical-align: middle;
+}
+
+.disch-count-chip--approved {
+  background: var(--status-success-bg, #dcfce7);
+  color: var(--status-success-fg, #15803d);
+}
+
+/* Detail table — flush inside its wrapper */
+.disch-detail-table {
+  margin: 0;
+}
+
+@media (max-width: 768px) {
+  .disch-detail-topbar {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .disch-detail-header {
+    width: 100%;
+  }
+}
+
+/* =====================================================
+   DISCHARGE PAGE — tab-style single-section layout
+   Two tabs in one header bar; only the active panel
+   is rendered. Replaces the previous overview-card
+   and three-state approach.
+   ===================================================== */
+
+/* Outer page wrapper */
+.disch-tab-page {
+  margin: 20px;
+  background: var(--md-surface-container);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-1);
+  overflow: hidden;
+}
+
+/* ── Tab bar ── */
+.disch-tab-bar {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  padding: 0 24px;
+  border-bottom: 2px solid var(--md-outline-variant, #e2e8f0);
+  background: var(--md-surface-container-high);
+  flex-wrap: wrap;
+}
+
+/* ── Individual tab button ── */
+.disch-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 14px 4px;
+  background: transparent;
+  border: none;
+  border-bottom: 3px solid transparent;
+  /* offset the bar's bottom border so the active indicator sits flush */
+  margin-bottom: -2px;
+  cursor: pointer;
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-muted-fg);
+  white-space: nowrap;
+  transition:
+    color         var(--duration-fast) var(--ease-standard),
+    border-color  var(--duration-fast) var(--ease-standard);
+}
+
+.disch-tab:hover {
+  color: var(--color-fg);
+}
+
+/* Active tab — bold, primary-coloured underline */
+.disch-tab--active {
+  color: var(--md-primary, #6750a4);
+  font-weight: 700;
+  border-bottom-color: var(--md-primary, #6750a4);
+}
+
+/* Separator between the two tabs */
+.disch-tab-divider {
+  padding: 0 12px;
+  color: var(--md-outline-variant, #cac4d0);
+  font-size: 16px;
+  user-select: none;
+  line-height: 1;
+}
+
+/* ── Badge beside each tab label ── */
+.disch-tab-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  padding: 1px 7px;
+  border-radius: var(--radius-full);
+  background: var(--md-surface-container, #ece6f0);
+  color: var(--color-muted-fg);
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.6;
+  transition: background var(--duration-fast) ease, color var(--duration-fast) ease;
+}
+
+/* Active pending badge — amber tint */
+.disch-tab-badge--active {
+  background: color-mix(in srgb, var(--md-primary, #6750a4) 12%, transparent);
+  color: var(--md-primary, #6750a4);
+}
+
+/* Active approved badge — green tint */
+.disch-tab-badge--active.disch-tab-badge--approved {
+  background: var(--status-success-bg, #dcfce7);
+  color: var(--status-success-fg, #15803d);
+}
+
+/* ── Tab panel ── */
+.disch-tab-panel {
+  /* no extra wrapper padding — pre-section-header already handles its own */
+}
+
+/* Table sits flush inside the card — no double border/shadow */
+.disch-table-inner {
+  margin: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+/* Responsive: on narrow screens wrap tabs and let each fill its row */
+@media (max-width: 600px) {
+  .disch-tab-bar {
+    padding: 0 12px;
+  }
+
+  .disch-tab {
+    font-size: 12px;
+    padding: 12px 2px;
+  }
+
+  .disch-tab-divider {
+    padding: 0 8px;
+  }
+}

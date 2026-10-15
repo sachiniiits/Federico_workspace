@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { api } from '../../api/index.js';
 import { useApi } from '../../hooks/useApi.js';
 import { useDocumentTitle } from '../../hooks/useDocumentTitle.js';
-import { joinPreRequestsWithPatients, statusLabel, formatDate, to12Hour } from './preHelpers.js';
+import { joinPreRequestsWithPatients, statusLabel, formatDate, to12Hour, filterBySearch } from './preHelpers.js';
 import ApprovePopup from './ApprovePopup.jsx';
 import SuggestPopup from './SuggestPopup.jsx';
 import RejectPopup from './RejectPopup.jsx';
@@ -21,6 +21,7 @@ import RejectPopup from './RejectPopup.jsx';
 export default function RequestsPage() {
   useDocumentTitle('Patient Requests');
   const [popup, setPopup] = useState(null); // { kind, id }
+  const [search, setSearch] = useState('');
 
   const { data, reload } = useApi(async () => {
     const [preRequests, patients, doctors] = await Promise.all([
@@ -38,12 +39,23 @@ export default function RequestsPage() {
 
   const pending = data?.pending || [];
   const doctors = data?.doctors || [];
+  const visibleRows = filterBySearch(pending, search);
   const activeRequest = popup ? pending.find((r) => r.pre_request_id === popup.id) : null;
 
   return (
     <>
       <div className="container">
-        <h2>Patient Requests</h2>
+        <div className="pre-section-header">
+          <h2 className="pre-section-title">Patient Requests</h2>
+          <input
+            type="search"
+            className="pre-search-input"
+            placeholder="Search by name, UHID or phone…"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            aria-label="Search pending requests"
+          />
+        </div>
         <table>
           <thead>
             <tr>
@@ -53,10 +65,14 @@ export default function RequestsPage() {
             </tr>
           </thead>
           <tbody id="requestTable">
-            {pending.length === 0 ? (
-              <tr><td colSpan="11">No Pending Requests</td></tr>
+            {visibleRows.length === 0 ? (
+              <tr>
+                <td colSpan="11" className="pre-empty-state">
+                  {search.trim() ? 'No requests match your search.' : 'No Pending Requests'}
+                </td>
+              </tr>
             ) : (
-              pending.map((r) => (
+              visibleRows.map((r) => (
                 <tr key={r.pre_request_id}>
                   <td>{r.patientUhid}</td>
                   <td>{r.patientAge}</td>
@@ -71,7 +87,7 @@ export default function RequestsPage() {
                   <td>
                     <button className="btn approve" onClick={() => setPopup({ kind: 'approve', id: r.pre_request_id })}>Approve</button>
                     <button className="btn suggest" onClick={() => setPopup({ kind: 'suggest', id: r.pre_request_id })}>Suggest</button>
-                    <button className="btn reject" onClick={() => setPopup({ kind: 'reject', id: r.pre_request_id })}>Reject</button>
+                    <button className="btn reject" onClick={() => setPopup({ kind: 'reject', id: r.pre_request_id })}>Rejected</button>
                   </td>
                 </tr>
               ))
@@ -92,4 +108,3 @@ export default function RequestsPage() {
     </>
   );
 }
-

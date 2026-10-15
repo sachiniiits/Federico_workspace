@@ -1,14 +1,29 @@
 'use strict';
 
+import { useState } from 'react';
 import { api } from '../../api/index.js';
 import { useApi } from '../../hooks/useApi.js';
 import { useDocumentTitle } from '../../hooks/useDocumentTitle.js';
 import { toast } from '../../components/feedback/feedback.js';
-import { joinPreRequestsWithPatients, formatDate, to12Hour } from './preHelpers.js';
+import { joinPreRequestsWithPatients, formatDate, to12Hour, filterBySearch } from './preHelpers.js';
 
-
+/**
+ * Discharge Approvals — tab-style single-section view.
+ *
+ * Two tabs sit in one header bar:
+ *   • Pending Discharge Requests   (default, 'pending')
+ *   • Approved Discharge Requests  ('approved')
+ *
+ * Only the active tab's table is rendered. State is managed locally;
+ * no routing changes required. All data is fetched once and shared.
+ */
 export default function DischargePage() {
   useDocumentTitle('Discharge Requests');
+
+  /** Active tab: 'pending' | 'approved' */
+  const [activeTab, setActiveTab] = useState('pending');
+  const [searchPending,  setSearchPending]  = useState('');
+  const [searchApproved, setSearchApproved] = useState('');
 
   const { data, reload } = useApi(async () => {
     const [preRequests, patients, doctors, beds, admissions, ledgers] = await Promise.all([
@@ -35,14 +50,18 @@ export default function DischargePage() {
 
     return joinPreRequestsWithPatients(preRequests, patients, doctorsById).map((r) => ({
       ...r,
-      bedNumber: bedsById[r.bed_id]?.bed_number || '-',
+      bedNumber:    bedsById[r.bed_id]?.bed_number || '-',
       billsCleared: Boolean(billsClearedByPatient[r.patient_id]),
     }));
   }, []);
 
-  const joined = data || [];
-  const pending = joined.filter((r) => r.status === 'DISCHARGE_REQUESTED');
+  const joined   = data || [];
+  const pending  = joined.filter((r) => r.status === 'DISCHARGE_REQUESTED');
   const approved = joined.filter((r) => r.status === 'DISCHARGE_APPROVED');
+
+  /* Independent filtered lists — each search only touches its own section */
+  const visiblePending  = filterBySearch(pending,  searchPending);
+  const visibleApproved = filterBySearch(approved, searchApproved);
 
   async function finalApprove(id) {
     try {
@@ -54,6 +73,7 @@ export default function DischargePage() {
     }
   }
 
+  /** Shared patient data cells used in both tables */
   const baseCells = (r) => (
     <>
       <td>{r.patientUhid}</td>
@@ -70,69 +90,140 @@ export default function DischargePage() {
   );
 
   return (
-    <>
-      <div className="container">
-        <h2>Discharge request</h2>
-        <table>
-          <thead>
-            <tr>
-              <th>Patient ID</th><th>Name</th><th>Age</th><th>Gender</th><th>Department</th>
-              <th>Doctor</th><th>Appointment Date</th><th>Appointment Time</th><th>Bed No</th><th>Patient Status</th><th>HOM Status</th>
-            </tr>
-          </thead>
-          <tbody id="dischargeTable">
-            {pending.length === 0 ? (
-              <tr><td colSpan="11">No Pending Requests</td></tr>
-            ) : (
-              pending.map((r) => (
-                <tr key={r.pre_request_id}>
-                  {baseCells(r)}
-                  <td style={{ color: 'orange' }}>{r.hom_status || 'Awaiting HOM'}</td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
+    <div className="disch-tab-page">
+
+      {/* ── Tab bar ── */}
+      <div className="disch-tab-bar" role="tablist" aria-label="Discharge Approvals">
+        <button
+          role="tab"
+          type="button"
+          className={`disch-tab${activeTab === 'pending' ? ' disch-tab--active' : ''}`}
+          aria-selected={activeTab === 'pending'}
+          onClick={() => setActiveTab('pending')}
+        >
+          Pending Discharge Requests
+          <span className={`disch-tab-badge${activeTab === 'pending' ? ' disch-tab-badge--active' : ''}`}>
+            {pending.length}
+          </span>
+        </button>
+
+        <span className="disch-tab-divider" aria-hidden="true">|</span>
+
+        <button
+          role="tab"
+          type="button"
+          className={`disch-tab${activeTab === 'approved' ? ' disch-tab--active' : ''}`}
+          aria-selected={activeTab === 'approved'}
+          onClick={() => setActiveTab('approved')}
+        >
+          Approved Discharge Requests
+          <span className={`disch-tab-badge${activeTab === 'approved' ? ' disch-tab-badge--active disch-tab-badge--approved' : ''}`}>
+            {approved.length}
+          </span>
+        </button>
       </div>
 
-      <div className="container">
-        <h3>{'✅'} Approved Discharge</h3>
-        <table>
-          <thead>
-            <tr>
-              <th>Patient ID</th><th>Name</th><th>Age</th><th>Gender</th><th>Department</th>
-              <th>Doctor</th><th>Appointment Date</th><th>Appointment Time</th><th>Bed No</th><th>Patient Status</th><th>Clearance</th><th>Action</th>
-            </tr>
-          </thead>
-          <tbody id="approvedDischargeTable">
-            {approved.length === 0 ? (
-              <tr><td colSpan="12">No Approved Requests</td></tr>
-            ) : (
-              approved.map((r) => (
-                <tr key={r.pre_request_id}>
-                  {baseCells(r)}
-                  {r.billsCleared ? (
-                    <td style={{ color: 'green' }}>Bills cleared by Finance</td>
-                  ) : (
-                    <td style={{ color: '#b45309' }}>Awaiting Finance payment</td>
-                  )}
-                  <td>
-                    {r.billsCleared ? (
-                      <button className="btn approve" onClick={() => finalApprove(r.pre_request_id)}>
-                        Discharge &amp; release bed
-                      </button>
-                    ) : (
-                      <button className="btn approve" disabled title="Patient bill not cleared yet" style={{ opacity: 0.5, cursor: 'not-allowed' }}>
-                        Discharge &amp; release bed
-                      </button>
-                    )}
-                  </td>
+      {/* ── Tab panel: Pending Discharge Requests ── */}
+      {activeTab === 'pending' && (
+        <div className="disch-tab-panel" role="tabpanel" id="panel-pending">
+          <div className="pre-section-header">
+            <h2 className="pre-section-title">Pending Discharge Requests</h2>
+            <input
+              type="search"
+              className="pre-search-input"
+              placeholder="Search by name, UHID or phone…"
+              value={searchPending}
+              onChange={(e) => setSearchPending(e.target.value)}
+              aria-label="Search pending discharge requests"
+            />
+          </div>
+          <div className="table-container disch-table-inner">
+            <table>
+              <thead>
+                <tr>
+                  <th>Patient ID</th><th>Name</th><th>Age</th><th>Gender</th><th>Department</th>
+                  <th>Doctor</th><th>Appointment Date</th><th>Appointment Time</th><th>Bed No</th>
+                  <th>Patient Status</th><th>HOM Status</th>
                 </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      </div>
-    </>
+              </thead>
+              <tbody id="dischargeTable">
+                {visiblePending.length === 0 ? (
+                  <tr>
+                    <td colSpan="11" className="pre-empty-state">
+                      {searchPending.trim() ? 'No requests match your search.' : 'No pending discharge requests.'}
+                    </td>
+                  </tr>
+                ) : (
+                  visiblePending.map((r) => (
+                    <tr key={r.pre_request_id}>
+                      {baseCells(r)}
+                      <td className="discharge-hom-awaiting">{r.hom_status || 'Awaiting HOM'}</td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* ── Tab panel: Approved Discharge Requests ── */}
+      {activeTab === 'approved' && (
+        <div className="disch-tab-panel" role="tabpanel" id="panel-approved">
+          <div className="pre-section-header">
+            <h2 className="pre-section-title">Approved Discharge Requests</h2>
+            <input
+              type="search"
+              className="pre-search-input"
+              placeholder="Search by name, UHID or phone…"
+              value={searchApproved}
+              onChange={(e) => setSearchApproved(e.target.value)}
+              aria-label="Search approved discharge requests"
+            />
+          </div>
+          <div className="table-container disch-table-inner">
+            <table>
+              <thead>
+                <tr>
+                  <th>Patient ID</th><th>Name</th><th>Age</th><th>Gender</th><th>Department</th>
+                  <th>Doctor</th><th>Appointment Date</th><th>Appointment Time</th><th>Bed No</th>
+                  <th>Patient Status</th><th>Clearance</th><th>Action</th>
+                </tr>
+              </thead>
+              <tbody id="approvedDischargeTable">
+                {visibleApproved.length === 0 ? (
+                  <tr>
+                    <td colSpan="12" className="pre-empty-state">
+                      {searchApproved.trim() ? 'No requests match your search.' : 'No approved discharge requests.'}
+                    </td>
+                  </tr>
+                ) : (
+                  visibleApproved.map((r) => (
+                    <tr key={r.pre_request_id}>
+                      {baseCells(r)}
+                      <td className={r.billsCleared ? 'discharge-bills-cleared' : 'discharge-bills-pending'}>
+                        {r.billsCleared ? 'Bills cleared by Finance' : 'Awaiting Finance payment'}
+                      </td>
+                      <td>
+                        <button
+                          className="btn approve"
+                          onClick={r.billsCleared ? () => finalApprove(r.pre_request_id) : undefined}
+                          disabled={!r.billsCleared}
+                          title={r.billsCleared ? undefined : 'Patient bill not cleared yet'}
+                          aria-disabled={!r.billsCleared}
+                        >
+                          Discharge &amp; release bed
+                        </button>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+    </div>
   );
 }

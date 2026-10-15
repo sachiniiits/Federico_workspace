@@ -7,9 +7,6 @@ export const doctors = {
   list() {
     return request('GET', '/doctor');
   },
-  get(id) {
-    return request('GET', '/doctor/' + id);
-  },
   create(payload) {
     return request('POST', '/doctor', withNormalizedPhones(payload, ['phone']));
   },
@@ -24,9 +21,6 @@ export const doctors = {
   },
   availabilityForDoctor(id) {
     return request('GET', '/doctor/' + id + '/availability');
-  },
-  createAvailability(payload) {
-    return request('POST', '/doctor/availability', payload);
   },
 };
 
