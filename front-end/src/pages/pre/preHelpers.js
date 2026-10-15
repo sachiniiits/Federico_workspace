@@ -133,5 +133,28 @@ export function joinPreRequestsWithPatients(requests, patients, doctors) {
   });
 }
 
+/**
+ * Shared search/filter utility for all PRE sections.
+ *
+ * Filters a list of joined patient-request rows by:
+ *   - Patient Name  (case-insensitive substring)
+ *   - UHID          (partial match)
+ *   - Phone Number  (partial match)
+ *
+ * @param {Array}  rows  - Joined pre-request rows (must have patientName, patientUhid, patientPhone)
+ * @param {string} query - Raw search string from the input (trimmed internally)
+ * @returns {Array} Filtered rows
+ */
+export function filterBySearch(rows, query) {
+  const q = String(query || '').trim().toLowerCase();
+  if (!q) return rows;
+  return (rows || []).filter((r) => {
+    const name  = String(r.patientName  || r.patient_name  || '').toLowerCase();
+    const uhid  = String(r.patientUhid  || r.patient_uhid  || '').toLowerCase();
+    const phone = String(r.patientPhone || r.patient_phone || '').toLowerCase();
+    return name.includes(q) || uhid.includes(q) || phone.includes(q);
+  });
+}
+
 export { escapeHtml, formatAge, formatDate };
 

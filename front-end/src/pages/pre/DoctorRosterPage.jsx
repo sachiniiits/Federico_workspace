@@ -44,9 +44,7 @@ export default function DoctorRosterPage() {
 
       return {
         ...d,
-        availability: avail,
         status: normalizedStatus,
-        rawStatus,
         dutyHours: startTimeFormatted + ' – ' + endTimeFormatted,
         days: avail?.days || avail?.available_days || 'Mon – Sat',
       };

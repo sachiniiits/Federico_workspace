@@ -1,14 +1,16 @@
 'use strict';
 
+import { useState } from 'react';
 import { api } from '../../api/index.js';
 import { useApi } from '../../hooks/useApi.js';
 import { useDocumentTitle } from '../../hooks/useDocumentTitle.js';
 import { toast } from '../../components/feedback/feedback.js';
-import { joinPreRequestsWithPatients, formatDate, to12Hour } from './preHelpers.js';
+import { joinPreRequestsWithPatients, formatDate, to12Hour, filterBySearch } from './preHelpers.js';
 
 /** Ported from PRE/pages/admitted.html + admitted.js. */
 export default function AdmittedPage() {
   useDocumentTitle('Admitted Patients');
+  const [search, setSearch] = useState('');
 
   const { data, reload } = useApi(async () => {
     const [preRequests, patients, doctors, beds] = await Promise.all([
@@ -26,8 +28,9 @@ export default function AdmittedPage() {
     return { admitted, bedsById };
   }, []);
 
-  const admitted = data?.admitted || [];
-  const bedsById = data?.bedsById || {};
+  const admitted   = data?.admitted || [];
+  const bedsById   = data?.bedsById || {};
+  const visibleRows = filterBySearch(admitted, search);
 
   async function dischargePatient(id) {
     try {
@@ -41,7 +44,17 @@ export default function AdmittedPage() {
 
   return (
     <div className="container">
-      <h2>Admitted Patient Records</h2>
+      <div className="pre-section-header">
+        <h2 className="pre-section-title">Admitted Patient Records</h2>
+        <input
+          type="search"
+          className="pre-search-input"
+          placeholder="Search by name, UHID or phone…"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          aria-label="Search admitted patients"
+        />
+      </div>
       <table>
         <thead>
           <tr>
@@ -50,10 +63,14 @@ export default function AdmittedPage() {
           </tr>
         </thead>
         <tbody id="admittedTable">
-          {admitted.length === 0 ? (
-            <tr><td colSpan="11">No Admitted Patients Found</td></tr>
+          {visibleRows.length === 0 ? (
+            <tr>
+              <td colSpan="11" className="pre-empty-state">
+                {search.trim() ? 'No patients match your search.' : 'No Admitted Patients Found'}
+              </td>
+            </tr>
           ) : (
-            admitted.map((r) => {
+            visibleRows.map((r) => {
               const bed = bedsById[r.bed_id];
               return (
                 <tr key={r.pre_request_id}>
@@ -81,4 +98,3 @@ export default function AdmittedPage() {
     </div>
   );
 }
-

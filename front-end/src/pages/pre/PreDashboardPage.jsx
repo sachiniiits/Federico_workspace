@@ -6,7 +6,7 @@ import { useApi } from '../../hooks/useApi.js';
 import { useDocumentTitle } from '../../hooks/useDocumentTitle.js';
 import { Link } from 'react-router-dom';
 import { toast } from '../../components/feedback/feedback.js';
-import { joinPreRequestsWithPatients, formatDate, to12Hour } from './preHelpers.js';
+import { joinPreRequestsWithPatients, formatDate, to12Hour, filterBySearch } from './preHelpers.js';
 import BedRequestModal from './BedRequestModal.jsx';
 
 /**
@@ -18,6 +18,7 @@ import BedRequestModal from './BedRequestModal.jsx';
 export default function PreDashboardPage() {
   useDocumentTitle('Dashboard');
   const [bedRequestId, setBedRequestId] = useState(null);
+  const [search, setSearch] = useState('');
 
   const { data, reload } = useApi(async () => {
     const [preRequests, patients, doctors, wards, bedRequests] = await Promise.all([
@@ -47,9 +48,9 @@ export default function PreDashboardPage() {
   );
 
   const counters = {
-    pending: all.filter((r) => r.status === 'PENDING').length,
-    rejected: all.filter((r) => r.status === 'REJECTED').length,
-    admitted: all.filter((r) => r.status === 'ADMITTED').length,
+    pending:   all.filter((r) => r.status === 'PENDING').length,
+    rejected:  all.filter((r) => r.status === 'REJECTED').length,
+    admitted:  all.filter((r) => r.status === 'ADMITTED').length,
     discharge: all.filter((r) => r.status === 'DISCHARGE_APPROVED' || r.status === 'DISCHARGE_REQUESTED').length,
   };
 
@@ -60,6 +61,8 @@ export default function PreDashboardPage() {
     if (r.status === 'CONSULTATION_DONE') return false;
     return r.status === 'APPROVED';
   });
+
+  const visibleApproved = filterBySearch(approved, search);
 
   async function completeFollowUp(id) {
     try {
@@ -89,7 +92,17 @@ export default function PreDashboardPage() {
       </div>
 
       <div className="table-container">
-        <h2>Approved Patients</h2>
+        <div className="pre-section-header">
+          <h2 className="pre-section-title">Approved Patients</h2>
+          <input
+            type="search"
+            className="pre-search-input"
+            placeholder="Search by name, UHID or phone…"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            aria-label="Search approved patients"
+          />
+        </div>
         <table>
           <thead>
             <tr>
@@ -98,20 +111,21 @@ export default function PreDashboardPage() {
             </tr>
           </thead>
           <tbody id="approvedTable">
-            {approved.length === 0 ? (
+            {visibleApproved.length === 0 ? (
               <tr>
-                <td colSpan="10" style={{ textAlign: 'center', padding: 24, color: 'var(--text-secondary)' }}>
-                  No Scheduled Patients Awaiting Check-in
+                <td colSpan="10" className="pre-empty-state">
+                  {search.trim()
+                    ? 'No patients match your search.'
+                    : 'No Scheduled Patients Awaiting Check-in'}
                 </td>
               </tr>
             ) : (
-              approved.map((r) => {
+              visibleApproved.map((r) => {
                 const hasPendingBedRequest = pendingBedRequestIds.has(r.pre_request_id);
 
-                let statusBadge = <span className="badge badge-neutral">Scheduled</span>;
-                if (hasPendingBedRequest) {
-                  statusBadge = <span className="badge badge-info">Pending Bed Request</span>;
-                }
+                const statusBadge = hasPendingBedRequest
+                  ? <span className="badge badge-info">Pending Bed Request</span>
+                  : <span className="badge badge-neutral">Scheduled</span>;
 
                 return (
                   <tr key={r.pre_request_id}>
@@ -126,9 +140,9 @@ export default function PreDashboardPage() {
                     <td>{statusBadge}</td>
                     <td>
                       {hasPendingBedRequest ? (
-                        <span style={{ color: 'var(--color-muted-fg)', fontSize: 12 }}>Awaiting HOM</span>
+                        <span className="pre-awaiting-label">Awaiting HOM</span>
                       ) : (
-                        <div style={{ display: 'flex', gap: 8, justifyContent: 'center', flexWrap: 'wrap' }}>
+                        <div className="pre-action-group">
                           <button className="btn suggest" type="button" onClick={() => completeFollowUp(r.pre_request_id)}>
                             Follow Up
                           </button>
@@ -152,7 +166,7 @@ export default function PreDashboardPage() {
         onClose={() => setBedRequestId(null)}
         onSubmitted={reload}
       />
+
     </>
   );
 }
-
