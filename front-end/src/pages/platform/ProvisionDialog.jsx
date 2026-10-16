@@ -2,7 +2,6 @@
 
 import { useState } from 'react';
 import DialogShell from '../../components/layout/DialogShell.jsx';
-import { MODULE_CATALOG } from './platformHelpers.js';
 import { api } from '../../api/index.js';
 import { toast } from '../../components/feedback/feedback.js';
 import TaggedEmailInput from '../../components/forms/TaggedEmailInput.jsx';
@@ -13,7 +12,7 @@ import {
   buildTaggedEmail,
 } from '../../lib/emailIdentity.js';
 
-const BLANK = { name: '', emailDomain: '', domainEdited: false, adminName: '', adminPassword: '' };
+const BLANK = { name: '', emailDomain: '', domainEdited: false, adminName: '', adminPassword: '', plan_id: '1' };
 
 /**
  * Ported from the #provision-dialog form in platform-dashboard.html, reduced
@@ -49,8 +48,7 @@ export default function ProvisionDialog({ open, organizations, onClose, onProvis
         admin_name: name + ' Admin',
         admin_email: adminEmail,
         admin_password: f.adminPassword,
-        plan_id: 1,
-        modules: MODULE_CATALOG.map((m) => m.code),
+        plan_id: Number(f.plan_id || 1),
       });
       onClose();
       setF(BLANK);
@@ -97,6 +95,14 @@ export default function ProvisionDialog({ open, organizations, onClose, onProvis
           />
         </div>
         <div className="md-field"><label htmlFor="p-admin-password">Admin password</label><input id="p-admin-password" type="password" required placeholder="Enter secure password" value={f.adminPassword} onChange={set('adminPassword')} /></div>
+        <div className="md-field">
+          <label htmlFor="p-plan">Subscription Tier</label>
+          <select id="p-plan" value={f.plan_id || '1'} onChange={set('plan_id')}>
+            <option value="1">Base Tier (Standard)</option>
+            <option value="2">Enterprise Tier</option>
+            <option value="3">Custom Tier</option>
+          </select>
+        </div>
         <div className="md-dialog-actions">
           <button type="button" className="md-btn md-btn-text" id="provision-cancel" onClick={onClose}>Cancel</button>
           <button type="submit" className="md-btn md-btn-filled" id="provision-submit" disabled={Boolean(domainProblem)}>Provision</button>

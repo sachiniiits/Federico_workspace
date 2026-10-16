@@ -4,14 +4,13 @@ import { useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { usePatientStore } from './usePatientStore.js';
 import { useDocumentTitle } from '../../hooks/useDocumentTitle.js';
-import { toast } from '../../components/feedback/feedback.js';
+import { toast, selectOne } from '../../components/feedback/feedback.js';
 import PageHeader from '../../components/layout/PageHeader.jsx';
 import StatCard from '../../components/ui/StatCard.jsx';
 import TabNav from '../../components/ui/TabNav.jsx';
 import EmptyState from '../../components/ui/EmptyState.jsx';
 import DocumentRow from './DocumentRow.jsx';
-import BillDetailsModal, { PatientPaymentModal } from './BillDetailsModal.jsx';
-import PatientDischargeBanner from './PatientDischargeBanner.jsx';
+import BillDetailsModal from './BillDetailsModal.jsx';
 import { openInvoiceDigitalCopy, openBillingDigitalCopy } from './patientInvoiceCopy.js';
 import { usePageStyles } from '../../hooks/usePageStyles.js';
 import patientBillingCss from '../../styles/patient/patient-billing.css?inline';
@@ -24,18 +23,18 @@ const TABS = [
 ];
 
 function EmptySection({ message }) {
-  return <EmptyState icon="📄" title={message} />;
+  return <EmptyState icon={null} title={message} />;
 }
 
 export default function BillingPage() {
   usePageStyles(patientBillingCss);
   useDocumentTitle('My Bills & Receipts – Federico Hospital Portal');
-  const { profile, bills, visits, billingSections, getBillingDocumentByRef, payBill, raw } =
+  const { profile, bills, visits, billingSections, getBillingDocumentByRef, payBill } =
     usePatientStore();
+  const ins = profile?.insurance;
 
   const [activeTab, setActiveTab] = useState('invoices');
   const [detailBill, setDetailBill] = useState(null);
-  const [payingBill, setPayingBill] = useState(null);
   const [payingLedger, setPayingLedger] = useState(null);
 
   // ?bill=<id> (from the dashboard's Bill Summary) opens that invoice directly.
@@ -60,8 +59,26 @@ export default function BillingPage() {
     .filter((b) => b.status !== 'paid')
     .reduce((sum, b) => sum + Number(b.youPay || 0), 0);
 
-  function payNow(bill) {
-    setPayingBill(bill);
+  async function selectPaymentMethod(amount) {
+    return selectOne({
+      title: 'Pay ₹' + Number(amount || 0).toLocaleString('en-IN'),
+      options: ['UPI', 'CARD', 'NETBANKING', 'CASH'],
+    });
+  }
+
+  async function payNow(bill) {
+    const method = await selectPaymentMethod(bill.youPay);
+    if (!method) return;
+
+    setPayingLedger(bill.ledgerId);
+    try {
+      await payBill(bill, method);
+      toast('Payment successful! Receipt has been generated.', 'success');
+    } catch (err) {
+      toast(err?.message || 'Payment processing failed.', 'warning');
+    } finally {
+      setPayingLedger(null);
+    }
   }
 
   function printInvoice(bill) {
@@ -98,15 +115,6 @@ export default function BillingPage() {
           subtitle="Review your itemized hospital bills, make secure online payments, track official receipts, and access discharge financial records."
         />
 
-        <PatientDischargeBanner
-          bills={bills}
-          raw={raw}
-          billingSections={billingSections}
-          onPay={(bill) => payNow(bill)}
-          onViewSummary={(doc) => viewDocument(doc)}
-          onViewReceipt={(doc) => viewDocument(doc)}
-        />
-
         <section className="kpi-grid">
           <StatCard
             label="Total Billed"
@@ -133,39 +141,49 @@ export default function BillingPage() {
           />
         </section>
 
-        {/*
-          DEFECT D4, preserved: renderInsuranceBanner() tests `ins.hasInsurance`,
-          a key patient-store.js#buildProfile never writes. The banner therefore
-          always renders the Self Pay branch, even for a fully insured patient.
-        */}
+        {/* Dynamic Insurance Banner */}
         <div className="insurance-banner" id="insurance-banner">
           <div className="ins-left">
             <span
               className="ins-badge"
               id="ins-status-badge"
-              style={{ background: 'var(--md-surface-container-low)', color: 'var(--muted)' }}
+              style={
+                ins?.hasInsurance
+                  ? undefined
+                  : { background: 'var(--md-surface-container-low)', color: 'var(--muted)' }
+              }
             >
-              Self Pay
+              {ins?.hasInsurance ? (ins.verified ? 'Verified Active' : 'Active Policy') : 'Self Pay'}
             </span>
             <div>
-              <strong id="ins-provider-name">Self Pay (No Active Insurance)</strong>
+              <strong id="ins-provider-name">
+                {ins?.hasInsurance ? ins.provider : 'Self Pay (No Active Insurance)'}
+              </strong>
               <p id="ins-policy-meta">
-                Add your health insurance policy in My Profile for instant cashless claims.
+                {ins?.hasInsurance
+                  ? `Policy #${ins.policyNumber || 'N/A'}${ins.memberId ? ` · Member ID: ${ins.memberId}` : ''}`
+                  : 'Add your health insurance policy in My Profile for instant cashless claims.'}
               </p>
             </div>
           </div>
           <div className="ins-breakdown">
             <div className="ins-item">
               <span>Coverage Type</span>
-              <strong id="ins-coverage-type">Self Sponsored</strong>
+              <strong id="ins-coverage-type">
+                {ins?.hasInsurance ? `${ins.coverageType} Coverage` : 'Self Sponsored'}
+              </strong>
             </div>
             <div className="ins-item">
               <span>Coverage Limit</span>
-              <strong id="ins-coverage-limit">₹0</strong>
+              <strong id="ins-coverage-limit">
+                {ins?.hasInsurance ? `₹${Number(ins.coverage || 0).toLocaleString('en-IN')}` : '₹0'}
+              </strong>
             </div>
             <div className="ins-item">
               <span>Valid Till</span>
-              <strong id="ins-valid-till">N/A</strong>
+              <strong id="ins-valid-till">
+                {ins?.hasInsurance ? (ins.validTo || 'N/A') : 'N/A'}
+              </strong>
             </div>
           </div>
         </div>
@@ -358,26 +376,10 @@ export default function BillingPage() {
         onClose={closeDetail}
         onPrint={printInvoice}
         onPay={(bill) => {
+          // openBillModal()'s Pay handler closes the dialog before asking for
+          // the payment method.
           closeDetail();
           payNow(bill);
-        }}
-      />
-
-      <PatientPaymentModal
-        open={Boolean(payingBill)}
-        bill={payingBill}
-        profile={profile}
-        onClose={() => setPayingBill(null)}
-        onConfirmPay={async (bill, method, refId) => {
-          setPayingLedger(bill.ledgerId);
-          try {
-            await payBill(bill, method, refId);
-            toast(`Payment confirmed via ${method}! Receipt generated.`, 'success');
-          } catch (err) {
-            toast(err?.message || 'Payment processing failed.', 'warning');
-          } finally {
-            setPayingLedger(null);
-          }
         }}
       />
     </>

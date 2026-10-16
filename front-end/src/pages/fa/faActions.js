@@ -95,7 +95,7 @@ export async function dispatchCurrent(ctx, ledgerId) {
   ctx.reload();
 }
 
-export async function recordInPersonPayment(ctx, ledgerId, paymentMode = 'CASH', referenceId = null) {
+export async function recordCashPayment(ctx, ledgerId) {
   const entries = await loadLedgerEntries(ledgerId);
   const grossTotal = ledgerTotal(entries);
   const deduction = readCoverageOverride(ctx, grossTotal);
@@ -105,39 +105,14 @@ export async function recordInPersonPayment(ctx, ledgerId, paymentMode = 'CASH',
     return ctx.showFormError('discharge-payment-error', 'Nothing due to collect for this patient.');
   }
 
-  const payload = {
-    ledger_id: ledgerId,
-    amount_paid: netPayable,
-    payment_mode: (paymentMode || 'CASH').toUpperCase(),
-  };
-  if (referenceId) {
-    payload.reference_id = referenceId;
-    payload.transaction_id = referenceId;
-  }
-
   try {
-    await api.billing.payments.create(payload);
-    toast(`Payment of ${formatCurrency(netPayable)} recorded successfully (${payload.payment_mode}).`, 'success');
+    await api.billing.payments.create({
+      ledger_id: ledgerId,
+      amount_paid: netPayable,
+      payment_mode: 'CASH',
+    });
   } catch (err) {
     return ctx.showFormError('discharge-payment-error', err.message || 'Unable to record payment.');
-  }
-  return ctx.reload();
-}
-
-export async function recordCashPayment(ctx, ledgerId) {
-  return recordInPersonPayment(ctx, ledgerId, 'CASH');
-}
-
-export async function submitPatientForDischargeApproval(ctx, admissionId) {
-  try {
-    await api.admissions.update(admissionId, {
-      fa_discharge_submitted: true,
-      status: 'DISCHARGE_PENDING_APPROVAL',
-    });
-    toast('Financial clearance confirmed. Patient submitted to HOM for final discharge approval.', 'success');
-  } catch (err) {
-    toast(err.message || 'Unable to submit patient for discharge approval.', 'error');
-    return;
   }
   return ctx.reload();
 }
@@ -160,6 +135,8 @@ async function ensureDischargeSummary(ctx, admissionId) {
     patient_id: row.patient.patient_id,
     discharge_notes:
       'Patient treated and stabilized for the condition requiring admission; fit for discharge.',
+    gross_amount: grossTotal,
+    insurance_deduction: deduction,
     final_amount: finalAmount,
   });
   return { row, summary };
@@ -314,11 +291,9 @@ export async function printReceipt(receiptId) {
             <body>
                 <div class="header"><h2>🧾 Payment Receipt</h2><span class="badge">PAID</span></div>
                 <div class="row"><span>Receipt ID</span><span>PAY${r.receipt_id}</span></div>
-                ${r.reference_id || r.transaction_id ? `<div class="row"><span>Transaction / Reference ID</span><span style="font-family: monospace; font-weight: 600;">${escapeHtml(r.reference_id || r.transaction_id)}</span></div>` : ''}
                 <div class="row"><span>Patient Name</span><span>${escapeHtml(patient.name || '-')}</span></div>
                 <div class="row"><span>UHID</span><span>${escapeHtml(patient.uhid || '-')}</span></div>
                 <div class="row"><span>Date & Time</span><span>${formatDateTime(r.generated_at)}</span></div>
-                <div class="row"><span>Payment Status</span><span style="color: #2C5B41; font-weight: 700;">✓ PAID</span></div>
                 <div class="row"><span>Payment Mode</span><span>${escapeHtml((r.payment_mode || '').toUpperCase())}</span></div>
                 <div class="row net"><span>Total Amount Paid</span><span>${formatCurrency(r.amount)}</span></div>
                 <button class="print-btn" onclick="window.print()">Print / Save PDF</button>

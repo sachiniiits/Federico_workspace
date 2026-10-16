@@ -7,6 +7,7 @@ const dataStore = require('../store/dataStore');
 const { sendResult } = require('../utils/sendResult');
 const { forbidsOtherPatient, isPatientSession } = require('../utils/patientOwnership');
 const { withTenant, scopeToOrg, belongsToOrg } = require('../utils/tenant');
+const { validateBookingDate } = require('../validators/bookingDate.validator');
 
 // PRE's final discharge sign-off (DISCHARGE_APPROVED -> DISCHARGED) is the
 // step that physically releases the bed. It must not happen until Finance
@@ -69,13 +70,33 @@ function create(req, res) {
   // `status` is not stripped by the validator, so drop it explicitly.
   if (isPatientSession(req)) delete payload.status;
 
+  // Patient booking horizon constraint: appointments cannot be scheduled in the past
+  // or more than MAX_ADVANCE_BOOKING_DAYS (default 14 days) in advance.
+  const isPatientBooking =
+    isPatientSession(req) ||
+    (req.session && req.session.role === 'Patient') ||
+    (!req.session && req.headers['x-role'] === 'Patient') ||
+    payload.status === 'PENDING' ||
+    !payload.status;
+
+  if (isPatientBooking && payload.requested_date) {
+    const dateCheck = validateBookingDate(payload.requested_date);
+    if (!dateCheck.valid) {
+      return res.status(400).json({
+        message: dateCheck.message,
+        error: 'Bad Request',
+        statusCode: 400,
+      });
+    }
+  }
+
   // PRE scheduling directly into APPROVED books the doctor's slot now, so it
   // gets the same availability / double-booking check as an approval.
   if (payload.status === 'APPROVED' && payload.doctor_id) {
     const availability = doctorService.isDoctorAvailableAt(
       payload.doctor_id,
-      payload.requested_date || payload.appointment_date,
-      payload.requested_time || payload.appointment_time,
+      payload.requested_date,
+      payload.requested_time,
     );
     if (!availability.available) {
       return res.status(409).json({
@@ -102,6 +123,7 @@ function create(req, res) {
 const PUBLICLY_SETTABLE_STATUSES = new Set([
   'APPROVED',
   'REJECTED',
+  'CRITICAL',
   'EMERGENCY',
   'CONSULTATION_DONE',
   'DISCHARGE_REQUESTED',
@@ -173,10 +195,8 @@ function update(req, res) {
       }
     }
 
-    // Legacy x-role-only callers (no real session) bypass the per-actor
-    // transition check, matching every other resource's SUPER_USER bypass.
     if (
-      req.session &&
+      !req.session ||
       !preRequestService.canTransition(
         existing.status,
         requestedStatus,
@@ -198,7 +218,8 @@ function update(req, res) {
     );
   }
 
-  if (req.session && req.session.role !== 'PRE' && req.session.role !== 'HOM') {
+  const actor = req.session?.actor || req.session?.role;
+  if (req.session && actor !== 'PRE' && actor !== 'HOM' && actor !== 'OPERATIONS') {
     return res.status(403).json(FORBIDDEN);
   }
 

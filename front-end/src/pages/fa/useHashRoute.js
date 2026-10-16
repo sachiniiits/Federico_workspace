@@ -1,63 +1,72 @@
 'use strict';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 
 /**
  * Replaces FA/js/router.js. The FA portal is the one page in the app that was
  * already a SPA; its views live at `fa-dashboard.html#/ledger`, `#/charges`
  * and `#/eod`, with an optional admission id as a third segment
- * (`#/ledger/42`). This is a hash listener rather than a nested router - a
- * HashRouter inside the BrowserRouter would fight over `location`.
- *
- * The portal had six views; three were folded into the others, and their
- * hashes still resolve (admission id included) through ROUTE_ALIASES.
+ * (`#/ledger/42`). This hook bridges React Router's location with the hash
+ * sub-views so navbar and internal links trigger instant, reactive view updates.
  */
 export const DEFAULT_ROUTE = '#/ledger';
-
-const ROUTE_ALIASES = {
-  '#/dashboard': '#/ledger', // work queues now head the Ledger view
-  '#/discharge': '#/eod', // settlement is part of EOD & Settlement
-  '#/receipts': '#/eod', // so is the receipts register
-};
+const CANONICAL_ROUTES = new Set(['#/ledger', '#/charges', '#/eod']);
 
 export function parseHashRoute(rawHashInput) {
   const rawHash = rawHashInput || DEFAULT_ROUTE;
   const parts = rawHash.split('/');
   const route = parts.slice(0, 2).join('/');
-  const mainRoute = ROUTE_ALIASES[route] || route;
+  const mainRoute = CANONICAL_ROUTES.has(route) ? route : DEFAULT_ROUTE;
   const param = parts[2] ? Number(parts[2].split('?')[0]) : null;
   return { rawHash, mainRoute, param };
 }
 
 export function useHashRoute() {
-  const [hash, setHash] = useState(() => window.location.hash || DEFAULT_ROUTE);
+  const location = useLocation();
+  const routerNavigate = useNavigate();
 
+  // Use React Router's location.hash, falling back to window.location.hash or DEFAULT_ROUTE
+  const activeHash = location.hash || (typeof window !== 'undefined' ? window.location.hash : '') || DEFAULT_ROUTE;
+  const parsed = useMemo(() => parseHashRoute(activeHash), [activeHash]);
+
+  // Keep window.location.hash in sync if external scripts assign it directly
   useEffect(() => {
     function onHashChange() {
-      setHash(window.location.hash || DEFAULT_ROUTE);
+      const current = window.location.hash || DEFAULT_ROUTE;
+      if (current !== location.hash) {
+        routerNavigate({ pathname: location.pathname, hash: current }, { replace: true });
+      }
     }
     window.addEventListener('hashchange', onHashChange);
     return () => window.removeEventListener('hashchange', onHashChange);
-  }, []);
+  }, [location.hash, location.pathname, routerNavigate]);
+
+  // Ensure default hash appears in URL if user navigates to /FA/fa-dashboard.html bare
+  useEffect(() => {
+    if (!location.hash) {
+      routerNavigate({ pathname: location.pathname, hash: DEFAULT_ROUTE }, { replace: true });
+    }
+  }, [location.hash, location.pathname, routerNavigate]);
 
   /**
    * navigate(hash, admissionId): appends the id to the hash unless it is
-   * already there, same as the legacy router. The caller sets
-   * currentAdmissionId; here we only move the URL.
+   * already there, and triggers a clean router navigation.
    */
-  const navigate = useCallback((target, admissionId = null) => {
-    let targetHash = target;
-    if (admissionId && !targetHash.includes('/' + admissionId)) {
-      targetHash = target + '/' + admissionId;
-    }
-    if (window.location.hash === targetHash) {
-      // Same hash means no hashchange event, so nudge state directly.
-      setHash(targetHash);
-      return;
-    }
-    window.location.hash = targetHash;
-  }, []);
+  const navigate = useCallback(
+    (target, admissionId = null) => {
+      let targetHash = target.startsWith('#') ? target : '#' + target;
+      if (admissionId && !targetHash.includes('/' + admissionId)) {
+        targetHash = targetHash + '/' + admissionId;
+      }
+      routerNavigate({
+        pathname: location.pathname,
+        hash: targetHash,
+      });
+    },
+    [location.pathname, routerNavigate],
+  );
 
-  return { ...parseHashRoute(hash), navigate, setHash };
+  return { ...parsed, navigate, setHash: navigate };
 }
 

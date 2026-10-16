@@ -2,11 +2,12 @@
 
 import { useState } from 'react';
 import DialogShell from '../../components/layout/DialogShell.jsx';
+import Button from '../../components/ui/Button.jsx';
 import { api } from '../../api/index.js';
 import { toast } from '../../components/feedback/feedback.js';
 
 /** Ported from the #item-dialog <dialog> in Admin/screen-03-inventory.html. */
-const BLANK = { item_name: '', category: 'Medicine', stock_quantity: '', reorder_level: '' };
+const BLANK = { item_name: '', category: 'Medication', stock_quantity: '', reorder_level: '' };
 
 export default function ItemDialog({ open, onClose, onSaved }) {
   // Mounted only while open, so every opening starts from a blank form.
@@ -52,10 +53,9 @@ function ItemForm({ onClose, onSaved }) {
         <div className="md-field">
           <label htmlFor="item-category">Category</label>
           <select id="item-category" value={f.category} onChange={set('category')}>
-            <option value="Medicine">Medicine</option>
+            <option value="Medication">Medication</option>
             <option value="Consumable">Consumable</option>
             <option value="Equipment">Equipment</option>
-            <option value="Linen">Linen</option>
           </select>
         </div>
         <div className="md-field">
@@ -67,8 +67,12 @@ function ItemForm({ onClose, onSaved }) {
           <input id="item-reorder" type="number" min="0" required placeholder="e.g. 10" value={f.reorder_level} onChange={set('reorder_level')} />
         </div>
         <div className="md-dialog-actions">
-          <button type="button" className="btn btn-outline btn-default" id="item-cancel" onClick={onClose}>Cancel</button>
-          <button type="submit" className="btn btn-primary btn-default">Save</button>
+          <Button variant="outline" type="button" id="item-cancel" onClick={onClose}>
+            Cancel
+          </Button>
+          <Button variant="primary" type="submit">
+            Save
+          </Button>
         </div>
       </form>
     </DialogShell>

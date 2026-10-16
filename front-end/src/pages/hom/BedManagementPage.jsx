@@ -50,6 +50,8 @@ export default function BedManagementPage() {
   /** A bed's current occupant, via the pre-request that holds it. */
   const patientForBed = useCallback(
     (bedId) => {
+      const bed = d.beds.find((b) => b.bed_id === bedId);
+      if (!bed || bed.status !== 'OCCUPIED') return null;
       const request = d.preRequests.find(
         (r) => r.bed_id === bedId && ['ADMITTED', 'DISCHARGE_REQUESTED', 'DISCHARGE_APPROVED'].includes(r.status),
       );
@@ -57,7 +59,7 @@ export default function BedManagementPage() {
       const patient = d.patients.find((p) => p.patient_id === request.patient_id);
       return patient ? { patient, request } : null;
     },
-    [d.preRequests, d.patients],
+    [d.beds, d.preRequests, d.patients],
   );
 
   const q = search.trim().toLowerCase();

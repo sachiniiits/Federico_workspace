@@ -70,7 +70,7 @@ The system supports cryptographic session tokens with per-tab session isolation:
 
 1. **Bearer Token Header:** Passed via `Authorization: Bearer <token>`, obtained from `POST /auth/login/:actor` (`hom`, `pre`, `fa`, `admin`, `patient`; the unified login page picks it from the email's `.role@` tag and the endpoint rejects accounts of any other role), the legacy `POST /auth/login`, or `POST /platform/auth/login`.
 2. **Per-Tab Session Isolation:** Prevents multi-tab session overwrites by keeping session keys isolated per tab while syncing auth lifecycles.
-3. **Legacy Role Header (Backward Compatibility):** Supports `x-role: ADMIN|SUPER_USER` for legacy automated test suites.
+3. **Session Cookies:** Automatically set via `HttpOnly`, `SameSite=Lax` cookies for secure browser sessions. Legacy unauthenticated `x-role` bypass headers have been completely decommissioned.
 
 ### Actor Access & Permissions Matrix
 

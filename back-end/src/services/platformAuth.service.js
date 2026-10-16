@@ -4,6 +4,7 @@ const dataStore = require('../store/dataStore');
 const { hashPassword, verifyPassword } = require('../utils/password');
 const { createSession, destroySession } = require('../store/sessionStore');
 const { parseEmail, PLATFORM_EMAIL_DOMAIN } = require('../utils/emailIdentity');
+const { maxId } = require('../utils/maxId');
 
 /**
  * Platform Super User authentication — a wholly separate account namespace
@@ -71,11 +72,7 @@ function create(payload) {
   }
   const newUser = {
     platform_user_id:
-      dataStore.platformSuperUsers.length > 0
-        ? Math.max(
-            ...dataStore.platformSuperUsers.map((u) => u.platform_user_id),
-          ) + 1
-        : 1,
+      maxId(dataStore.platformSuperUsers, 'platform_user_id') + 1 || 1,
     name: payload.name,
     email: payload.email,
     password_hash: hashPassword(payload.password),

@@ -55,6 +55,10 @@ function toPublicUser(user) {
     name: user.name,
     email: user.email,
     role_id: user.role_id,
+    organization_id:
+      user.organization_id != null ? Number(user.organization_id) : null,
+    hospital_id:
+      user.hospital_id != null ? Number(user.hospital_id) : null,
   };
 }
 
@@ -66,9 +70,6 @@ function toPublicUser(user) {
 function tenantContextFor(user) {
   const organization = organizationService.findById(user.organization_id);
   if (!organization) return null;
-  const enabledModules = organizationService.enabledModulesFor(
-    organization.organization_id,
-  );
   const entitlements = entitlementService.entitlementsFor(
     organization.organization_id,
   );
@@ -78,12 +79,8 @@ function tenantContextFor(user) {
     organization_name: organization.name,
     email_domain: organization.email_domain || null,
     branding: organization.branding,
-    // Back-compat: the array of enabled codes the frontend already reads.
-    enabled_modules: enabledModules,
-    // tasks.md §9 — full entitlement snapshot so the existing UI can make
-    // itself dynamic (lock/hide) with no extra round-trip.
-    modules: entitlements.modules, // { CODE: true|false } for every module
-    resources: entitlements.resources, // { MODULE: { RESOURCE: qty } }
+    specialties: organization.specialties || [],
+    resources: entitlements.resources,
   };
 }
 
@@ -223,12 +220,14 @@ function signup(payload) {
     name: payload.name,
     email: payload.email,
     password_hash: hashPassword(payload.password),
+    demo_password: payload.password,
     role_id: 2, // Patient
     organization_id: organization.organization_id,
     hospital_id: primaryHospital ? primaryHospital.hospital_id : null,
     created_at: new Date().toISOString(),
   };
   dataStore.users.push(newUser);
+  registerDemoPassword(payload.email, payload.password);
 
   // Built directly here (not via patientService.create()) so the fuller
   // self-signup field set — user_id, emergency_contact_name/phone — is
@@ -322,6 +321,14 @@ const ROLE_PURPOSE = {
   Platform: 'Platform Super User — Tenant hospital provisioning, subscription management, and MRR analytics',
 };
 
+function registerDemoPassword(email, password) {
+  if (email && password) {
+    const key = String(email).trim().toLowerCase();
+    KNOWN_DEMO_PASSWORDS[key] = String(password);
+    KNOWN_DEMO_PASSWORDS[String(email).trim()] = String(password);
+  }
+}
+
 function getDemoAccounts() {
   const activeOrgs = dataStore.organizations.filter((o) => o.status === 'ACTIVE');
   const orgMap = {};
@@ -341,7 +348,12 @@ function getDemoAccounts() {
     orgUsers.forEach((u) => {
       const roleName = roleNameFor(u);
       if (byRole[roleName]) {
-        const pwd = KNOWN_DEMO_PASSWORDS[u.email] || 'Demo@123';
+        const emailLower = (u.email || '').toLowerCase();
+        const pwd =
+          u.demo_password ||
+          KNOWN_DEMO_PASSWORDS[emailLower] ||
+          KNOWN_DEMO_PASSWORDS[u.email] ||
+          'Demo@123';
         const purpose =
           u.email === 'billing.assist.pre@citygen.com'
             ? 'Custom Role Demo — Delegated billing & front-desk operational access'
@@ -377,6 +389,27 @@ function getDemoAccounts() {
   };
 }
 
+function changePassword(userId, newPassword, currentPassword = null) {
+  const uid = Number(userId);
+  const user = dataStore.users.find((u) => u.user_id === uid);
+  if (!user) {
+    const notFound = new Error('User not found');
+    notFound.status = 404;
+    throw notFound;
+  }
+  if (currentPassword && user.password_hash) {
+    if (!verifyPassword(currentPassword, user.password_hash)) {
+      const err = new Error('Current password is incorrect');
+      err.status = 400;
+      throw err;
+    }
+  }
+  user.password_hash = hashPassword(newPassword);
+  user.demo_password = newPassword;
+  registerDemoPassword(user.email, newPassword);
+  return { success: true, message: 'Password updated successfully' };
+}
+
 module.exports = {
   login,
   signup,
@@ -389,4 +422,7 @@ module.exports = {
   roleNameFor,
   tenantContextFor,
   getDemoAccounts,
+  changePassword,
+  toPublicUser,
+  registerDemoPassword,
 };

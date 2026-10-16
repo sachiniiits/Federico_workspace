@@ -12,7 +12,7 @@ import PageHeader from '../../components/layout/PageHeader.jsx';
 import SearchToolbar from '../../components/ui/SearchToolbar.jsx';
 import EmptyState from '../../components/ui/EmptyState.jsx';
 import { csvEscape, downloadCsv } from '../../lib/csv.js';
-import { toast, confirm } from '../../components/feedback/feedback.js';
+import { toast } from '../../components/feedback/feedback.js';
 import { statusLabel, statusVariant, daysSince, formatDate, joinPreRequestsWithPatients } from './homHelpers.js';
 import PatientDetailModal from './PatientDetailModal.jsx';
 import DischargeModal from './DischargeModal.jsx';
@@ -54,31 +54,23 @@ export default function PatientFlowPage() {
     // can safely release the bed.
     const ledgerByAdmission = {};
     (Array.isArray(ledgers) ? ledgers : []).forEach((l) => (ledgerByAdmission[l.admission_id] = l));
-    const admissionsByPatient = {};
     const billsClearedByPatient = {};
     (Array.isArray(admissions) ? admissions : []).forEach((a) => {
-      admissionsByPatient[a.patient_id] = a;
       const ledger = ledgerByAdmission[a.admission_id];
-      if (a.bills_cleared || (ledger && ledger.status === 'PAID')) billsClearedByPatient[a.patient_id] = true;
+      if (a.receipt_sent_to_hom || (ledger && ledger.status === 'PAID')) {
+        billsClearedByPatient[a.patient_id] = true;
+      }
     });
 
     const rows = joinPreRequestsWithPatients(
       (Array.isArray(preRequests) ? preRequests : []).filter((r) => FLOW_STATUSES.includes(r.status)),
       Array.isArray(patients) ? patients : [],
       doctorsById,
-    ).map((r) => {
-      const admission = admissionsByPatient[r.patient_id] || null;
-      const faSubmitted =
-        Boolean(admission?.fa_discharge_submitted) ||
-        admission?.status === 'DISCHARGE_PENDING_APPROVAL';
-      return {
-        ...r,
-        admission,
-        bedNumber: bedsById[r.bed_id]?.bed_number || '-',
-        billsCleared: Boolean(billsClearedByPatient[r.patient_id]),
-        faSubmitted,
-      };
-    });
+    ).map((r) => ({
+      ...r,
+      bedNumber: bedsById[r.bed_id]?.bed_number || '-',
+      billsCleared: Boolean(billsClearedByPatient[r.patient_id]),
+    }));
 
     // "+ Post Service" (moved here from the removed HOM Billing screen):
     // only active admissions can have a service charge staged for FA.
@@ -142,24 +134,6 @@ export default function PatientFlowPage() {
       ),
     ].join('\n');
     downloadCsv('hom-patient-flow.csv', csv);
-  }
-
-  async function handleAcceptFinalDischarge(row) {
-    const confirmed = await confirm({
-      title: 'Accept Final Discharge — ' + row.patientName,
-      body: `Confirming final discharge will mark ${row.patientName} as DISCHARGED, complete inpatient admission records, and release Bed ${row.bedNumber} (AVAILABLE).`,
-      confirmLabel: 'Accept & Release Bed',
-      cancelLabel: 'Cancel',
-    });
-    if (!confirmed) return;
-
-    try {
-      await api.preRequests.update(row.pre_request_id, { status: 'DISCHARGED' });
-      toast(`Final discharge accepted for ${row.patientName}. Bed ${row.bedNumber} released.`, 'success');
-      await reload();
-    } catch (err) {
-      toast(err.message || 'Unable to accept final discharge.', 'error');
-    }
   }
 
   const queueRow = (row, actionCell) => (
@@ -231,47 +205,9 @@ export default function PatientFlowPage() {
                     {approved.map((row) =>
                       queueRow(row, (
                         <td>
-                          {row.billsCleared && row.faSubmitted ? (
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                              <Badge variant="warning">Discharge Pending Approval</Badge>
-                              <Button
-                                variant="primary"
-                                size="sm"
-                                onClick={() => handleAcceptFinalDischarge(row)}
-                              >
-                                Accept Final Discharge
-                              </Button>
-                            </div>
-                          ) : row.billsCleared ? (
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                              <span
-                                style={{
-                                  fontSize: 12,
-                                  fontWeight: 500,
-                                  color: 'var(--status-success-fg, #1b5e20)',
-                                }}
-                              >
-                                Bills cleared · Ready for review
-                              </span>
-                              <Button
-                                variant="secondary"
-                                size="sm"
-                                onClick={() => handleAcceptFinalDischarge(row)}
-                              >
-                                Accept Discharge
-                              </Button>
-                            </div>
-                          ) : (
-                            <span
-                              style={{
-                                fontSize: 12,
-                                fontWeight: 500,
-                                color: 'var(--status-warning-fg, #7a5300)',
-                              }}
-                            >
-                              Awaiting Finance payment
-                            </span>
-                          )}
+                          <span style={{ fontSize: 12, fontWeight: 500, color: row.billsCleared ? 'var(--status-success-fg, #1b5e20)' : 'var(--status-warning-fg, #7a5300)' }}>
+                            {row.billsCleared ? 'Bills cleared · PRE can release bed' : 'Awaiting Finance payment'}
+                          </span>
                         </td>
                       )),
                     )}
@@ -370,7 +306,7 @@ export default function PatientFlowPage() {
                           {row.status === 'DISCHARGE_REQUESTED' ? (
                             <Button variant="primary" size="sm" onClick={() => setDischargeId(row.pre_request_id)}>Approve Discharge</Button>
                           ) : row.status === 'DISCHARGED' ? (
-                            <Button variant="outline" size="sm" onClick={() => setDetail({ id: row.pre_request_id, tab: 'supply' })}>
+                            <Button variant="outline" size="sm" onClick={() => setDetail({ id: row.pre_request_id, tab: 'receipt' })}>
                               View Receipt
                             </Button>
                           ) : null}

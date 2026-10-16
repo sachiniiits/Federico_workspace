@@ -4,6 +4,12 @@ import { useState } from 'react';
 import { api } from '../../api/index.js';
 import { useApi } from '../../hooks/useApi.js';
 import { useDocumentTitle } from '../../hooks/useDocumentTitle.js';
+import Badge from '../../components/ui/Badge.jsx';
+import Button from '../../components/ui/Button.jsx';
+import EmptyState from '../../components/ui/EmptyState.jsx';
+import PageHeader from '../../components/layout/PageHeader.jsx';
+import SearchToolbar from '../../components/ui/SearchToolbar.jsx';
+import StatCard from '../../components/ui/StatCard.jsx';
 import { formatAge } from './preHelpers.js';
 import Patient360Modal from './Patient360Modal.jsx';
 
@@ -25,7 +31,7 @@ export default function PatientRecordsPage() {
   const [detailId, setDetailId] = useState(null);
 
   const { data, error } = useApi(async () => {
-    const [patients, insurances, preRequests, appointments, admissions, beds, doctors, bedRequests] = await Promise.all([
+    const [patients, insurances, preRequests, appointments, admissions, beds, doctors, bedRequests, wards] = await Promise.all([
       api.patients.list().catch(() => []),
       api.patients.insuranceAll().catch(() => []),
       api.preRequests.list().catch(() => []),
@@ -34,12 +40,20 @@ export default function PatientRecordsPage() {
       api.wards.beds().catch(() => []),
       api.doctors.list().catch(() => []),
       api.wards.bedRequests.list().catch(() => []),
+      api.wards.list().catch(() => []),
     ]);
 
     const doctorsById = {};
     (doctors || []).forEach((d) => (doctorsById[d.doctor_id] = d));
+    const wardsById = {};
+    (wards || []).forEach((w) => (wardsById[w.ward_id] = w));
     const bedsById = {};
-    (beds || []).forEach((b) => (bedsById[b.bed_id] = b));
+    (beds || []).forEach((b) => {
+      bedsById[b.bed_id] = {
+        ...b,
+        ward_name: b.ward_name || wardsById[b.ward_id]?.ward_name || wardsById[b.ward_id]?.name || 'Ward',
+      };
+    });
 
     const insurancesByPatient = {};
     (insurances || []).forEach((ins) => (insurancesByPatient[ins.patient_id] = ins));
@@ -119,47 +133,47 @@ export default function PatientRecordsPage() {
     );
   });
 
-  const chip = (bg, color, border, weight, text) => (
-    <span className="status pending" style={{ background: bg, color, border: '1px solid ' + border, fontWeight: weight, fontSize: 11, padding: '3px 8px', borderRadius: 12 }}>
-      {text}
-    </span>
-  );
-
   function statusBadge(p) {
-    if (p.isInpatient) return chip('#e0f2fe', '#0369a1', '#bae6fd', 600, 'Inpatient (' + (p.activeBed ? p.activeBed.bed_number : 'Bed Assigned') + ')');
-    if (p.pendingBedRequest) return chip('#fef3c7', '#92400e', '#fde68a', 600, 'Pending');
-    if (p.hasDischarged) return chip('#f1f5f9', '#475569', '#cbd5e1', 400, 'Discharged');
-    if (p.hasFollowUp) return chip('#dcfce7', '#15803d', '#bbf7d0', 400, 'Follow Up');
-    if (p.hasScheduled) return chip('#f3e8ff', '#6b21a8', '#d8b4fe', 600, 'Scheduled');
-    if (p.hasPendingIntake) return chip('#fef9c3', '#854d0e', '#fef08a', 400, 'Pending Request');
-    if (p.hasConsultationDone) return chip('#dcfce7', '#15803d', '#bbf7d0', 400, 'Completed (OPD)');
-    if (p.totalEncounters > 0) return chip('#dcfce7', '#15803d', '#bbf7d0', 400, 'Outpatient');
-    return chip('#f1f5f9', '#475569', '#e2e8f0', 400, 'Registered');
+    if (p.isInpatient) return <Badge variant="info">{'Inpatient (' + (p.activeBed ? p.activeBed.bed_number : 'Bed Assigned') + ')'}</Badge>;
+    if (p.pendingBedRequest) return <Badge variant="warning">Pending</Badge>;
+    if (p.hasDischarged) return <Badge variant="neutral">Discharged</Badge>;
+    if (p.hasFollowUp) return <Badge variant="success">Follow Up</Badge>;
+    if (p.hasScheduled) return <Badge variant="info">Scheduled</Badge>;
+    if (p.hasPendingIntake) return <Badge variant="warning">Pending Request</Badge>;
+    if (p.hasConsultationDone) return <Badge variant="success">Completed (OPD)</Badge>;
+    if (p.totalEncounters > 0) return <Badge variant="success">Outpatient</Badge>;
+    return <Badge variant="neutral">Registered</Badge>;
   }
 
   return (
     <>
       <div className="cards">
-        <div className="card"><h3>Total Registered Patients</h3><p id="kpi-total-patients">{total} Patients</p></div>
-        <div className="card"><h3>Active Inpatients</h3><p id="kpi-active-inpatients" style={{ color: 'var(--status-warning-fg, #b45309)' }}>{inpatients} In Beds</p></div>
-        <div className="card"><h3>Insured Patients</h3><p id="kpi-insured-patients" style={{ color: 'var(--status-success, #15803d)' }}>{insured} Policies</p></div>
+        <StatCard label="Total Registered Patients" value={`${total} Patients`} variant="info" />
+        <StatCard label="Active Inpatients" value={`${inpatients} In Beds`} variant="warning" />
+        <StatCard label="Insured Patients" value={`${insured} Policies`} variant="success" />
       </div>
 
       <div className="container">
-        <div className="directory-header">
-          <div className="directory-title-group">
-            <h2>Master Patient Directory</h2>
-            <p>Review verified patient demographics, active insurance policies, and complete clinical encounter logs.</p>
-          </div>
-          <div className="directory-toolbar">
-            <input type="text" id="patientSearchInput" placeholder="Search by name, UHID, phone..." className="directory-search-input"
-              value={query} onChange={(e) => setQuery(e.target.value)} />
-            <select id="filterBloodGroup" className="directory-filter-select" value={bloodFilter} onChange={(e) => setBloodFilter(e.target.value)}>
-              <option value="">All Blood Groups</option>
-              {BLOOD_GROUPS.map((b) => <option key={b} value={b}>{b}</option>)}
-            </select>
-          </div>
-        </div>
+        <PageHeader
+          title="Master Patient Directory"
+          subtitle="Review verified patient demographics, active insurance policies, and complete clinical encounter logs."
+        />
+        <SearchToolbar
+          searchQuery={query}
+          onSearchChange={setQuery}
+          placeholder="Search by name, UHID, phone..."
+          filters={[
+            {
+              id: 'bloodGroup',
+              value: bloodFilter,
+              onChange: setBloodFilter,
+              options: [
+                { value: '', label: 'All Blood Groups' },
+                ...BLOOD_GROUPS.map((b) => ({ value: b, label: b })),
+              ],
+            },
+          ]}
+        />
 
         <div className="table-container" style={{ margin: 0 }}>
           <table>
@@ -171,9 +185,9 @@ export default function PatientRecordsPage() {
             </thead>
             <tbody id="recordTable">
               {error ? (
-                <tr><td colSpan="9" style={{ color: 'var(--status-error)' }}>Failed to load patient directory: {error.message}</td></tr>
+                <EmptyState asTableRow colSpan={9} icon={null} title="Failed to load patient directory" message={error.message} />
               ) : filtered.length === 0 ? (
-                <tr><td colSpan="9" style={{ textAlign: 'center', padding: 32, color: 'var(--color-muted-fg)' }}>No matching patient records found</td></tr>
+                <EmptyState asTableRow colSpan={9} icon={null} title="No matching patient records found" />
               ) : (
                 filtered.map((p) => (
                   <tr key={p.patient_id}>
@@ -193,23 +207,18 @@ export default function PatientRecordsPage() {
                     </td>
                     <td style={{ textAlign: 'center', padding: '12px 12px' }}>
                       {p.blood_group ? (
-                        <span style={{ display: 'inline-block', padding: '2px 8px', borderRadius: 12, border: '1px solid #fecaca', background: '#fef2f2', fontWeight: 700, fontSize: 11, color: '#991b1b' }}>
-                          {p.blood_group}
-                        </span>
+                        <Badge variant="error">{p.blood_group}</Badge>
                       ) : (
                         <span style={{ color: 'var(--color-muted-fg)', fontSize: 12 }}>{'—'}</span>
                       )}
                     </td>
                     <td style={{ textAlign: 'center', padding: '12px 14px' }}>
                       {p.insurance ? (
-                        <span className="status confirmed" title={'Policy #' + (p.insurance.policy_number || '')}
-                          style={{ background: '#ecfdf5', color: '#047857', border: '1px solid #a7f3d0', fontSize: 11, fontWeight: 600, padding: '3px 8px', borderRadius: 12 }}>
+                        <Badge variant="success" title={'Policy #' + (p.insurance.policy_number || '')}>
                           {p.insurance.provider_name || 'Insured'}
-                        </span>
+                        </Badge>
                       ) : (
-                        <span style={{ color: 'var(--color-muted-fg)', fontSize: 11, padding: '3px 8px', border: '1px solid var(--md-outline-variant, #e2e8f0)', borderRadius: 12, background: 'var(--md-surface-container-low, #f8fafc)' }}>
-                          Self Pay
-                        </span>
+                        <Badge variant="neutral">Self Pay</Badge>
                       )}
                     </td>
                     <td style={{ textAlign: 'left', padding: '12px 16px' }}>
@@ -221,9 +230,9 @@ export default function PatientRecordsPage() {
                     <td style={{ textAlign: 'center', padding: '12px 14px' }}>{statusBadge(p)}</td>
                     <td style={{ textAlign: 'center', padding: '12px 16px' }}>
                       <div style={{ display: 'flex', justifyContent: 'center' }}>
-                        <button className="btn blue" type="button" style={{ padding: '6px 16px', fontSize: 12, borderRadius: 'var(--radius-full, 9999px)' }} onClick={() => setDetailId(p.patient_id)}>
+                        <Button variant="secondary" size="sm" className="blue" onClick={() => setDetailId(p.patient_id)}>
                           View
-                        </button>
+                        </Button>
                       </div>
                     </td>
                   </tr>

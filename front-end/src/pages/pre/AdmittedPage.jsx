@@ -1,16 +1,23 @@
-'use strict';
-
+import { useState, useMemo } from 'react';
 import { api } from '../../api/index.js';
 import { useApi } from '../../hooks/useApi.js';
 import { useDocumentTitle } from '../../hooks/useDocumentTitle.js';
 import { toast } from '../../components/feedback/feedback.js';
+import Button from '../../components/ui/Button.jsx';
+import Badge from '../../components/ui/Badge.jsx';
+import EmptyState from '../../components/ui/EmptyState.jsx';
+import SearchToolbar from '../../components/ui/SearchToolbar.jsx';
+import PageHeader from '../../components/layout/PageHeader.jsx';
 import { joinPreRequestsWithPatients, formatDate, to12Hour } from './preHelpers.js';
 
 /** Ported from PRE/pages/admitted.html + admitted.js. */
 export default function AdmittedPage() {
   useDocumentTitle('Admitted Patients');
+  const [actionId, setActionId] = useState(null);
+  const [query, setQuery] = useState('');
+  const [deptFilter, setDeptFilter] = useState('');
 
-  const { data, reload } = useApi(async () => {
+  const { data, loading, error, reload } = useApi(async () => {
     const [preRequests, patients, doctors, beds] = await Promise.all([
       api.preRequests.list(),
       api.patients.list(),
@@ -29,19 +36,68 @@ export default function AdmittedPage() {
   const admitted = data?.admitted || [];
   const bedsById = data?.bedsById || {};
 
+  const departments = useMemo(() => {
+    const depts = new Set();
+    (data?.admitted || []).forEach((r) => {
+      if (r.department) depts.add(r.department);
+    });
+    return Array.from(depts).sort();
+  }, [data?.admitted]);
+
+  const q = query.trim().toLowerCase();
+  const filtered = admitted.filter((r) => {
+    if (deptFilter && r.department !== deptFilter) return false;
+    if (!q) return true;
+    const bed = bedsById[r.bed_id];
+    const bedNumber = bed ? String(bed.bed_number).toLowerCase() : '';
+    return (
+      (r.patientUhid && r.patientUhid.toLowerCase().includes(q)) ||
+      (r.patientName && r.patientName.toLowerCase().includes(q)) ||
+      (r.department && r.department.toLowerCase().includes(q)) ||
+      (r.doctorName && r.doctorName.toLowerCase().includes(q)) ||
+      bedNumber.includes(q)
+    );
+  });
+
   async function dischargePatient(id) {
+    setActionId(id);
     try {
       await api.preRequests.update(id, { status: 'DISCHARGE_REQUESTED' });
       toast('Discharge request sent to HOM', 'success');
       await reload();
     } catch (err) {
       toast(err.message || 'Could not request discharge', 'error');
+    } finally {
+      setActionId(null);
     }
   }
 
   return (
     <div className="container">
-      <h2>Admitted Patient Records</h2>
+      <PageHeader
+        title="Admitted Patients"
+        subtitle="Current admitted inpatient queue requiring PRE tracking and discharge facilitation"
+      />
+      <SearchToolbar
+        searchQuery={query}
+        onSearchChange={setQuery}
+        placeholder="Search by patient name, UHID, doctor, bed..."
+        filters={
+          departments.length > 0
+            ? [
+                {
+                  id: 'department',
+                  value: deptFilter,
+                  onChange: setDeptFilter,
+                  options: [
+                    { value: '', label: 'All Departments' },
+                    ...departments.map((d) => ({ value: d, label: d })),
+                  ],
+                },
+              ]
+            : []
+        }
+      />
       <table>
         <thead>
           <tr>
@@ -50,10 +106,28 @@ export default function AdmittedPage() {
           </tr>
         </thead>
         <tbody id="admittedTable">
-          {admitted.length === 0 ? (
-            <tr><td colSpan="11">No Admitted Patients Found</td></tr>
+          {loading ? (
+            <tr><td colSpan="11" style={{ textAlign: 'center', padding: 24, color: 'var(--color-muted-fg)' }}>Loading admitted patients…</td></tr>
+          ) : error ? (
+            <EmptyState asTableRow colSpan={11} icon={null} title="Failed to load admitted patients" message={error.message} />
+          ) : admitted.length === 0 ? (
+            <EmptyState
+              asTableRow
+              colSpan={11}
+              icon={null}
+              title="No Admitted Patients Found"
+              message="There are currently no patients marked as admitted in this organization."
+            />
+          ) : filtered.length === 0 ? (
+            <EmptyState
+              asTableRow
+              colSpan={11}
+              icon={null}
+              title="No Matching Patients"
+              message="No admitted patients match your search criteria."
+            />
           ) : (
-            admitted.map((r) => {
+            filtered.map((r) => {
               const bed = bedsById[r.bed_id];
               return (
                 <tr key={r.pre_request_id}>
@@ -65,12 +139,18 @@ export default function AdmittedPage() {
                   <td>{r.doctorName}</td>
                   <td>{formatDate(r.requested_date)}</td>
                   <td>{to12Hour(r.requested_time) || '-'}</td>
-                  <td>Admitted</td>
+                  <td><Badge variant="info">Admitted</Badge></td>
                   <td>{bed ? bed.bed_number : '-'}</td>
                   <td>
-                    <button className="btn reject" onClick={() => dischargePatient(r.pre_request_id)}>
-                      Discharge request
-                    </button>
+                    <Button
+                      variant="danger"
+                      size="sm"
+                      className="reject"
+                      disabled={actionId === r.pre_request_id}
+                      onClick={() => dischargePatient(r.pre_request_id)}
+                    >
+                      {actionId === r.pre_request_id ? 'Requesting…' : 'Discharge request'}
+                    </Button>
                   </td>
                 </tr>
               );

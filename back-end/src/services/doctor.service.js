@@ -13,13 +13,14 @@ function findAllDoctors(predicate = null) {
 }
 
 function findDoctorById(doctor_id) {
-  return dataStore.doctors.find((d) => d.doctor_id === doctor_id) || null;
+  const numId = Number(doctor_id);
+  return dataStore.doctors.find((d) => Number(d.doctor_id) === numId) || null;
 }
 
 function createDoctor(doctor) {
   const newDoctor = {
     doctor_id:
-      maxId(dataStore.doctors, 'doctor_id') + 1 || 401,
+      maxId(dataStore.doctors, 'doctor_id', 401) + 1,
     name: doctor.name,
     specialization: doctor.specialization || 'General Practitioner',
     department: doctor.department || 'General',
@@ -36,12 +37,14 @@ function createDoctor(doctor) {
 function updateDoctor(doctor_id, patch) {
   const doc = findDoctorById(doctor_id);
   if (!doc) return null;
-  Object.assign(doc, patch);
+  const { doctor_id: _did, organization_id: _oid, hospital_id: _hid, created_at: _cat, ...safePatch } = patch;
+  Object.assign(doc, safePatch);
   return doc;
 }
 
 function deleteDoctor(doctor_id) {
-  const doctor = findDoctorById(doctor_id);
+  const numId = Number(doctor_id);
+  const doctor = findDoctorById(numId);
   if (!doctor) {
     return { deleted: false };
   }
@@ -49,7 +52,7 @@ function deleteDoctor(doctor_id) {
   doctor.is_active = false;
   doctor.status = 'INACTIVE';
   dataStore.doctors = dataStore.doctors.filter(
-    (d) => d.doctor_id !== doctor_id,
+    (d) => Number(d.doctor_id) !== numId,
   );
   return { deleted: true };
 }
@@ -60,8 +63,18 @@ function findAllAvailabilities() {
 }
 
 function findAvailabilityByDoctor(doctor_id) {
+  const numId = Number(doctor_id);
   return dataStore.doctorAvailabilities.filter(
-    (a) => a.doctor_id === doctor_id,
+    (a) => Number(a.doctor_id) === numId,
+  );
+}
+
+function findAvailabilityById(availability_id) {
+  const numId = Number(availability_id);
+  return (
+    dataStore.doctorAvailabilities.find(
+      (a) => Number(a.availability_id) === numId,
+    ) || null
   );
 }
 
@@ -76,18 +89,14 @@ function createAvailability(availability) {
 
   const newAvail = {
     availability_id:
-      dataStore.doctorAvailabilities.length > 0
-        ? Math.max(
-            ...dataStore.doctorAvailabilities.map((a) => a.availability_id),
-          ) + 1
-        : 501,
+      maxId(dataStore.doctorAvailabilities, 'availability_id', 501) + 1,
     doctor_id: doctorId,
     available_date: availability.available_date,
     start_time: availability.start_time,
     end_time: availability.end_time,
-    status: availability.status || 'AVAILABLE',
-    organization_id: availability.organization_id || doctor.organization_id || null,
-    hospital_id: availability.hospital_id || doctor.hospital_id || null,
+    status: availability.status || 'Available',
+    organization_id: availability.organization_id ? Number(availability.organization_id) : (doctor.organization_id ? Number(doctor.organization_id) : null),
+    hospital_id: availability.hospital_id ? Number(availability.hospital_id) : (doctor.hospital_id ? Number(doctor.hospital_id) : null),
   };
   dataStore.doctorAvailabilities.push(newAvail);
   return newAvail;
@@ -141,11 +150,12 @@ function findConflictingAppointment(doctor_id, date, time, excludeId = null) {
   const doctorId = Number(doctor_id);
   const dateKey = toDateKey(date);
   const requestedMinutes = toMinutes(time);
+  const numExcludeId = excludeId !== null && excludeId !== undefined ? Number(excludeId) : null;
   if (!doctorId || !dateKey || requestedMinutes === null) return null;
 
   return (
     dataStore.appointments.find((appointment) => {
-      if (excludeId !== null && appointment.appointment_id === excludeId) return false;
+      if (numExcludeId !== null && Number(appointment.appointment_id) === numExcludeId) return false;
       if (Number(appointment.doctor_id) !== doctorId) return false;
       if (['CANCELLED', 'COMPLETED'].includes(appointment.status)) return false;
       if (toDateKey(appointment.appointment_date || appointment.scheduled_datetime) !== dateKey) return false;
@@ -190,9 +200,10 @@ function isDoctorAvailableAt(doctor_id, date, time, excludeAppointmentId = null)
 }
 
 function deleteAvailability(availability_id) {
+  const numId = Number(availability_id);
   const initialLen = dataStore.doctorAvailabilities.length;
   dataStore.doctorAvailabilities = dataStore.doctorAvailabilities.filter(
-    (a) => a.availability_id !== availability_id,
+    (a) => Number(a.availability_id) !== numId,
   );
   return { deleted: initialLen > dataStore.doctorAvailabilities.length };
 }
@@ -211,4 +222,5 @@ module.exports = {
   isWithinStandardDutyHours,
   UNAVAILABLE_MESSAGE,
   deleteAvailability,
+  findAvailabilityById,
 };

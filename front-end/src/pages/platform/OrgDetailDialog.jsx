@@ -17,7 +17,6 @@ import { emailDomainProblem, normalizeDomain } from '../../lib/emailIdentity.js'
  */
 export default function OrgDetailDialog({ org, organizations, onClose, onChanged }) {
   if (!org) return null;
-  const modules = org.enabled_modules || [];
 
   return (
     <DialogShell
@@ -54,16 +53,38 @@ export default function OrgDetailDialog({ org, organizations, onClose, onChanged
           organizations={organizations}
           onChanged={onChanged}
         />
-        <div style={{ marginTop: 16, fontSize: '0.9rem' }}>
-          <strong>Enabled Modules:</strong>
-          <div className="module-pill-list" style={{ marginTop: 8, maxWidth: 'none' }}>
-            {modules.length ? (
-              modules.map((m) => (
-                <span className="module-pill active" key={m}>{m}</span>
-              ))
-            ) : (
-              <span className="module-pill">None</span>
-            )}
+        <div style={{ marginTop: 20, padding: '16px', background: 'var(--md-surface-container-low, #f8fafc)', borderRadius: 10, border: '1px solid var(--md-outline-variant, #e2e8f0)' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+            <strong style={{ fontSize: '0.95rem', color: 'var(--md-primary, #6750A4)' }}>
+              Enterprise Capacity &amp; Resource Allocation
+            </strong>
+            <span style={{ fontSize: '0.75rem', padding: '2px 8px', borderRadius: 12, background: '#dcfce7', color: '#166534', fontWeight: 600 }}>
+              ALL CORE MODULES UNLOCKED
+            </span>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 10, fontSize: '0.85rem' }}>
+            <div style={{ padding: '8px 12px', background: '#fff', borderRadius: 6, border: '1px solid #e2e8f0' }}>
+              <div style={{ color: 'var(--md-on-surface-variant, #64748b)', fontSize: 11 }}>Inpatient Beds</div>
+              <strong style={{ fontSize: 14 }}>{org.beds || 0} Beds</strong>
+              <div style={{ fontSize: 11, color: '#16a34a' }}>{org.beds_occupied || 0} active</div>
+            </div>
+            <div style={{ padding: '8px 12px', background: '#fff', borderRadius: 6, border: '1px solid #e2e8f0' }}>
+              <div style={{ color: 'var(--md-on-surface-variant, #64748b)', fontSize: 11 }}>Staff Accounts</div>
+              <strong style={{ fontSize: 14 }}>{org.users || 0} Users</strong>
+              <div style={{ fontSize: 11, color: 'var(--md-on-surface-variant, #64748b)' }}>HOM/PRE/FA/Admin</div>
+            </div>
+            <div style={{ padding: '8px 12px', background: '#fff', borderRadius: 6, border: '1px solid #e2e8f0' }}>
+              <div style={{ color: 'var(--md-on-surface-variant, #64748b)', fontSize: 11 }}>Hospital Branches</div>
+              <strong style={{ fontSize: 14 }}>{org.hospitals || 1} Campus(es)</strong>
+              <div style={{ fontSize: 11, color: 'var(--md-on-surface-variant, #64748b)' }}>Base license included</div>
+            </div>
+            <div style={{ padding: '8px 12px', background: '#fff', borderRadius: 6, border: '1px solid #e2e8f0' }}>
+              <div style={{ color: 'var(--md-on-surface-variant, #64748b)', fontSize: 11 }}>Billing Engine</div>
+              <strong style={{ fontSize: 14 }}>Pay-As-You-Scale</strong>
+              <div style={{ fontSize: 11, color: 'var(--md-primary, #6750A4)', fontWeight: 600 }}>
+                {inr(org.subscription ? org.subscription.price_monthly : 0)} / mo
+              </div>
+            </div>
           </div>
         </div>
       </div>

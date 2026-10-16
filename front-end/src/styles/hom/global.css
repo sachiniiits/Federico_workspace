@@ -406,10 +406,16 @@ select.input { cursor: pointer; }
    difference stays as a small local override on top of the shared base
    below, same cascade order as the .modal-* rules above. */
 .dashboard-container {
-  padding: 32px;
-  padding-bottom: 64px;
-  max-width: 1440px;
+  padding: 40px 32px 56px;
+  max-width: 1320px;
   margin: 0 auto;
+  box-sizing: border-box;
+}
+
+@media (max-width: 768px) {
+  .dashboard-container {
+    padding: 24px 16px 40px;
+  }
 }
 .header-section {
   display: flex;

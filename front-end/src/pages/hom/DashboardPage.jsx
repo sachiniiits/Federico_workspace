@@ -61,10 +61,10 @@ function parseOperationalLog(log) {
     badgeVariant = 'success';
     title = 'Inpatient admission confirmed for Pre-request #' + (meta.preRequestId || '');
     subtitle = 'Patient active under hospital ward care';
-  } else if (/Emergency/i.test(text)) {
-    category = 'ADMISSION';
+  } else if (/Critical/i.test(text)) {
+    category = 'CRITICAL CARE';
     badgeVariant = 'error';
-    subtitle = 'High-priority walk-in registered';
+    subtitle = 'High-priority critical admission registered';
   } else if (/denied/i.test(text)) {
     category = 'REQUEST DENIED';
     badgeVariant = 'error';
@@ -125,9 +125,11 @@ export default function HomDashboardPage() {
 
   const d = data || { preRequests: [], patients: [], wards: [], beds: [], bedRequests: [], activity: [], doctors: [] };
 
-  const totalBeds = d.wards.reduce((sum, w) => sum + (w.total_beds || 0), 0);
-  const occupied = d.wards.reduce((sum, w) => sum + (w.occupied_beds || 0), 0);
-  const available = Math.max(0, totalBeds - occupied);
+  const totalBeds = d.beds.length || d.wards.reduce((sum, w) => sum + (w.total_beds || 0), 0);
+  const occupied = d.beds.filter((b) => b.status === 'OCCUPIED').length;
+  const available = d.beds.length
+    ? d.beds.filter((b) => b.status === 'AVAILABLE').length
+    : Math.max(0, totalBeds - occupied);
   const occupancyRate = totalBeds > 0 ? Math.round((occupied / totalBeds) * 100) : 0;
 
   const activeStatuses = ['ADMITTED', 'DISCHARGE_REQUESTED', 'DISCHARGE_APPROVED'];
@@ -149,7 +151,7 @@ export default function HomDashboardPage() {
     const tA = new Date(a.created_at || 0).getTime();
     const tB = new Date(b.created_at || 0).getTime();
     if (tB !== tA) return tB - tA;
-    return (b.id || b.log_id || 0) - (a.id || a.log_id || 0);
+    return (b.log_id || 0) - (a.log_id || 0);
   });
 
   const approveDischarge = useCallback(
@@ -311,7 +313,7 @@ export default function HomDashboardPage() {
                 sortedLogs.slice(0, 12).map((log, i) => {
                   const parsed = parseOperationalLog(log);
                   return (
-                    <div key={i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', background: 'var(--md-surface-container, #ffffff)', border: '1px solid var(--border)', borderRadius: 'var(--radius-md, 12px)', gap: 16 }}>
+                    <div key={log.log_id || i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', background: 'var(--md-surface-container, #ffffff)', border: '1px solid var(--border)', borderRadius: 'var(--radius-md, 12px)', gap: 16 }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 14, flex: 1, minWidth: 0 }}>
                         <span className={'badge badge-' + parsed.badgeVariant} style={{ fontSize: 11, flexShrink: 0 }}>{parsed.category}</span>
                         <div style={{ minWidth: 0, flex: 1 }}>

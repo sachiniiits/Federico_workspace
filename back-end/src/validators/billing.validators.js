@@ -24,8 +24,6 @@ const createPaymentRules = [
   { field: 'ledger_id', checks: ['isNotEmpty', 'isInt'] },
   { field: 'amount_paid', checks: ['isNumber'] },
   { field: 'payment_mode', checks: ['isNotEmpty', 'isString'] },
-  { field: 'reference_id', checks: ['isString'], optional: true },
-  { field: 'transaction_id', checks: ['isString'], optional: true },
 ];
 
 const createDischargeSummaryRules = [
@@ -39,10 +37,19 @@ const createDischargeSummaryRules = [
   { field: 'file_path', checks: ['isString'], optional: true },
 ];
 
+const createLeaderRules = [
+  { field: 'admission_id', checks: ['isNotEmpty', 'isInt'] },
+  { field: 'service_id', checks: ['isNotEmpty', 'isInt'] },
+  { field: 'quantity', checks: ['isInt'], optional: true },
+  { field: 'unit_price', checks: ['isNumber'], optional: true },
+  { field: 'amount', checks: ['isNumber'], optional: true },
+];
+
 module.exports = {
   createServiceRules,
   createLedgerRules,
   createLedgerEntryRules,
   createPaymentRules,
   createDischargeSummaryRules,
+  createLeaderRules,
 };

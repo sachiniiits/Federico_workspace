@@ -5,6 +5,50 @@ export const MAX_UPLOAD_BYTES = 5 * 1024 * 1024;
 export const ALLOWED_UPLOAD_EXT = ['.pdf', '.jpg', '.jpeg', '.png'];
 
 /**
+ * Appointment advance booking horizon constraints (mirrors backend env):
+ * Patient appointments can only be booked from today up to MAX_ADVANCE_BOOKING_DAYS in advance.
+ */
+export const MAX_ADVANCE_BOOKING_DAYS = 14;
+export const MIN_ADVANCE_BOOKING_DAYS = 0;
+
+/**
+ * Returns UTC-based date strings { minDate, maxDate, maxDays, minDays } formatted as YYYY-MM-DD.
+ */
+export function getBookingDateBounds(
+  baseIsoDate = null,
+  maxDays = MAX_ADVANCE_BOOKING_DAYS,
+  minDays = MIN_ADVANCE_BOOKING_DAYS,
+) {
+  const base = baseIsoDate || new Date().toISOString().split('T')[0];
+  const [year, month, day] = base.split('-').map(Number);
+
+  const min = new Date(Date.UTC(year, month - 1, day));
+  min.setUTCDate(min.getUTCDate() + minDays);
+  const minDate = min.toISOString().split('T')[0];
+
+  const max = new Date(Date.UTC(year, month - 1, day));
+  max.setUTCDate(max.getUTCDate() + maxDays);
+  const maxDate = max.toISOString().split('T')[0];
+
+  return { minDate, maxDate, maxDays, minDays };
+}
+
+/**
+ * Validates a user-selected date against the allowed booking horizon bounds.
+ * Returns an error message string or null if valid.
+ */
+export function validateBookingDateString(dateIso, bounds) {
+  if (!dateIso) return 'Please select a preferred date.';
+  if (bounds && bounds.minDate && dateIso < bounds.minDate) {
+    return 'Please choose today or a future date.';
+  }
+  if (bounds && bounds.maxDate && dateIso > bounds.maxDate) {
+    return `Appointments cannot be scheduled more than ${bounds.maxDays} days in advance.`;
+  }
+  return null;
+}
+
+/**
  * Standard doctor duty roster (mirrors back-end doctor.service.js): Monday to
  * Friday, 09:00 - 17:00. A preferred time outside it can never be confirmed by
  * PRE for a doctor without explicit calendar rows, so the form rejects it.

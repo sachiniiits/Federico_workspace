@@ -13,9 +13,9 @@ import adminCss from '../../styles/admin/admin.css?inline';
  */
 const LINKS = [
   { href: '/Admin/screen-01-dashboard.html', label: 'Dashboard' },
-  { href: '/Admin/screen-02-departments.html', label: 'Departments' },
+  { href: '/Admin/screen-02-departments.html', label: 'Departments & Wards' },
   { href: '/Admin/screen-03-inventory.html', label: 'Inventory Catalog' },
-  { href: '/Admin/screen-05-people.html', label: 'People' },
+  { href: '/Admin/screen-05-people.html', label: 'Staff & Doctors' },
 ];
 
 export default function AdminLayout() {

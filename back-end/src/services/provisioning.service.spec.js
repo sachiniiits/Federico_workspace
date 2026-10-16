@@ -44,12 +44,6 @@ describe('services/provisioning.service', () => {
     );
     expect(result.apiKey.key).toMatch(/^fed_live_/);
 
-    // Modules default to the plan's included set when none are explicitly requested.
-    const enabledModules = organizationService.enabledModulesFor(
-      result.organization.organization_id,
-    );
-    expect(enabledModules.sort()).toEqual(['APPOINTMENTS', 'BILLING'].sort());
-
     // Default admin is a real, immediately-usable login (role_id 5 = Admin,
     // the org's owner/super user — above HOM, not HOM itself).
     const adminUser = dataStore.users.find(
@@ -67,7 +61,6 @@ describe('services/provisioning.service', () => {
       'CREATE_ORGANIZATION',
       'GENERATE_CONFIGURATION',
       'ALLOCATE_QUOTAS',
-      'ENABLE_MODULES',
       'CREATE_DEFAULT_ADMIN',
       'SEED_DEFAULT_WARDS',
       'SEED_DEFAULT_SERVICES',
@@ -103,7 +96,7 @@ describe('services/provisioning.service', () => {
     expect(items.length).toBeGreaterThan(0);
   });
 
-  it('provision() respects an explicit modules list instead of defaulting to the plan', () => {
+  it('provision() stores module_resources capacity limits correctly', () => {
     const plan = planService.create({
       name: 'Provisioning Test Plan 2',
       max_beds: 25,
@@ -111,7 +104,6 @@ describe('services/provisioning.service', () => {
       max_hospitals: 1,
       storage_gb: 10,
       api_rate_limit: 60,
-      included_modules: ['APPOINTMENTS', 'BILLING', 'INSURANCE'],
       price_monthly: 1000,
     });
 
@@ -122,14 +114,16 @@ describe('services/provisioning.service', () => {
       admin_email: 'prov2.admin@provtest2.example',
       admin_password: 'ProvAdmin@123',
       plan_id: plan.plan_id,
-      modules: ['APPOINTMENTS'],
+      module_resources: {
+        ADMISSIONS: { GENERAL_BEDS: 30, ICU_BEDS: 5 },
+      },
     });
 
-    expect(
-      organizationService.enabledModulesFor(
-        result.organization.organization_id,
-      ),
-    ).toEqual(['APPOINTMENTS']);
+    const resources = organizationService.resourceQuantitiesFor(
+      result.organization.organization_id,
+    );
+    expect(resources.ADMISSIONS.GENERAL_BEDS).toBe(30);
+    expect(resources.ADMISSIONS.ICU_BEDS).toBe(5);
   });
 
   it('provision() with an unknown plan returns an error and creates nothing', () => {

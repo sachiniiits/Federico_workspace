@@ -9,13 +9,13 @@ const planService = require('./subscriptionPlan.service');
 const wardService = require('./ward.service');
 const inventoryService = require('./inventory.service');
 const billingService = require('./billing.service');
+const authService = require('./auth.service');
 const { hashPassword } = require('../utils/password');
 const {
   DEFAULT_DEPARTMENTS,
   DEFAULT_SERVICES,
   DEFAULT_INVENTORY_ITEMS,
 } = require('../config/defaultClinicalCatalog');
-const { MODULE_CODES } = require('../utils/tenant');
 const { parseEmail } = require('../utils/emailIdentity');
 
 /**
@@ -174,22 +174,6 @@ function provision(payload) {
     `Subscribed to "${plan.name}" — quotas allocated`,
   );
 
-  const chosenModules = (payload.modules && payload.modules.length) ? payload.modules : (plan && plan.included_modules && plan.included_modules.length ? plan.included_modules : MODULE_CODES);
-  const enabledModules = organizationService.setModuleFlags(
-    organization.organization_id,
-    chosenModules,
-    payload.module_instances || {},
-  );
-  const instanceSummary = enabledModules
-    .map((code) => `${code}×${(payload.module_instances || {})[code] || 1}`)
-    .join(', ');
-  logStep(
-    organization.organization_id,
-    'ENABLE_MODULES',
-    'DONE',
-    `Enabled services: ${instanceSummary || 'none'}`,
-  );
-
   // Resource-level entitlements (beds / seats / terminals — tasks.md §6/§7).
   // `module_resources` shape: { MODULE_CODE: { RESOURCE_CODE: quantity } }.
   if (payload.module_resources && typeof payload.module_resources === 'object') {
@@ -221,12 +205,14 @@ function provision(payload) {
     name: payload.admin_name,
     email: payload.admin_email,
     password_hash: hashPassword(payload.admin_password),
+    demo_password: payload.admin_password,
     role_id: 5, // Admin — the organization's owner/super user, above HOM (see utils/roles.js ROLE_ID_TO_NAME)
     organization_id: organization.organization_id,
     hospital_id: hospital.hospital_id,
     created_at: new Date().toISOString(),
   };
   dataStore.users.push(adminUser);
+  authService.registerDemoPassword(adminUser.email, payload.admin_password);
   logStep(
     organization.organization_id,
     'CREATE_DEFAULT_ADMIN',

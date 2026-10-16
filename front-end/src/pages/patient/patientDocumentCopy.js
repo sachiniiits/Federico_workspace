@@ -21,11 +21,12 @@ export function openDigitalCopy(record, context, profile) {
       record.ts ||
       Date.now(),
   ).toLocaleString('en-IN');
-  const patientName = record.patient || record.patient_name || (profile && profile.name) || 'Patient';
-  const uhid = (profile && profile.uhid) || 'UHID-882100';
-  const paymentMode = record.mode || record.payment_mode || 'UPI';
-  const gross = Number(record.gross || record.amount || 0);
-  const coverage = Number(record.coverage || record.insurance_deduction || 0);
+  const patientName = record.patient_name || (profile && profile.name) || 'Patient';
+  const uhid = (profile && profile.uhid) || (profile?.patientId ? `FED-${profile.patientId}` : (record.uhid || 'UHID-882100'));
+  const hospitalName = (profile && (profile.hospitalName || profile.orgName)) || record.hospital_name || 'City General Hospital';
+  const paymentMode = record.payment_mode || 'UPI';
+  const gross = Number(record.gross_amount || record.amount || 0);
+  const coverage = Number(record.insurance_deduction || 0);
   const amount = Number(record.amount || gross);
   const docStatus = record.status || 'OFFICIAL';
 
@@ -61,7 +62,7 @@ export function openDigitalCopy(record, context, profile) {
                 <div class="doc-sheet">
                     <div class="header">
                         <div>
-                            <div class="hospital-brand">City General Hospital</div>
+                            <div class="hospital-brand">${escapeHtml(hospitalName)}</div>
                             <div class="hospital-sub">Official Medical & Financial Record</div>
                         </div>
                         <span class="badge">${escapeHtml(String(docStatus).replace(/_/g, ' '))}</span>
@@ -75,7 +76,7 @@ export function openDigitalCopy(record, context, profile) {
                     <div class="row"><span>Gross Billed Amount</span><span>₹${gross.toLocaleString('en-IN')}</span></div>
                     <div class="row"><span>Insurance Deduction</span><span>-₹${coverage.toLocaleString('en-IN')}</span></div>
                     <div class="row net"><span>Net Paid / Settled</span><span>₹${amount.toLocaleString('en-IN')}</span></div>
-                    <button class="print-btn" onclick="window.print()">🖨️ Print / Save Document (PDF)</button>
+                    <button class="print-btn" onclick="window.print()">Print / Save Document (PDF)</button>
                 </div>
             </body>
             </html>

@@ -9,7 +9,7 @@ const STATUS_LABELS = {
   APPROVED: 'Approved',
   REJECTED: 'Rejected',
   CONSULTATION_DONE: 'Completed',
-  EMERGENCY: 'Pending',
+  CRITICAL: 'Critical',
   ADMITTED: 'Admitted',
   DISCHARGE_REQUESTED: 'Discharge Requested',
   DISCHARGE_APPROVED: 'Discharge Approved',
@@ -22,6 +22,8 @@ export function statusLabel(status) {
 
 export function statusVariant(status) {
   switch (status) {
+    case 'CRITICAL':
+      return 'error';
     case 'ADMITTED':
     case 'DISCHARGE_REQUESTED':
       return 'warning';
@@ -53,13 +55,14 @@ export function joinPreRequestsWithPatients(preRequests, patients, doctorsById) 
     const doctor = request.doctor_id ? doctorsById?.[request.doctor_id] : null;
     return {
       ...request,
-      patientUhid: patient.uhid || '-',
-      patientName: patient.name || '-',
-      patientAge: formatAge(patient.dob),
-      patientGender: patient.gender || '-',
-      patientPhone: patient.phone || '-',
-      patientBloodGroup: patient.blood_group || '-',
-      doctorName: doctor ? doctor.name : '-',
+      patientUhid: patient.uhid || '—',
+      patientName: patient.name || 'Unknown Patient',
+      patientAge: patient.dob ? formatAge(patient.dob) : '—',
+      patientGender: patient.gender || '—',
+      patientPhone: patient.phone || '—',
+      patientBloodGroup: patient.blood_group || '—',
+      doctorName: doctor ? doctor.name : '—',
+      doctorSpecialization: doctor ? doctor.specialization : '—',
     };
   });
 }

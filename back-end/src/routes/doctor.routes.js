@@ -3,7 +3,6 @@
 const { Router } = require('express');
 const controller = require('../controllers/doctor.controller');
 const { authorize } = require('../middleware/actorAccess');
-const { requireModule } = require('../middleware/tenant');
 const { validateBody } = require('../validators/engine');
 const {
   createDoctorRules,
@@ -12,9 +11,6 @@ const {
 } = require('../validators/doctor.validators');
 
 const router = Router();
-
-// Doctor Management is its own purchasable module (utils/tenant.js#MODULES).
-router.use(requireModule('DOCTOR'));
 
 router.get(
   '/',

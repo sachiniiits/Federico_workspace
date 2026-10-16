@@ -44,13 +44,7 @@ export default function DepartmentsPage() {
     if (!ok) return;
 
     try {
-      // The API client throws on error, so this defensive branch is dead -
-      // kept because the legacy code had it and removing it changes nothing.
-      const result = await api.wards.remove(wardId);
-      if (result && result.error) {
-        toast(result.message, 'error');
-        return;
-      }
+      await api.wards.remove(wardId);
       toast(ward.ward_name + ' deleted.', 'warning');
       await reload();
     } catch (err) {
@@ -64,9 +58,9 @@ export default function DepartmentsPage() {
         title="Departments & Wards"
         subtitle="Add, resize, or remove the wards patients get admitted into. Every hospital starts with 6 standard departments — adjust the list to fit yours."
         actions={
-          <button className="btn btn-primary btn-default" id="new-ward-btn" onClick={() => setEditingWard(null)}>
+          <Button variant="primary" id="new-ward-btn" onClick={() => setEditingWard(null)}>
             + Add Ward
-          </button>
+          </Button>
         }
       />
 

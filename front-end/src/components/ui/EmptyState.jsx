@@ -6,7 +6,7 @@ import '../css/empty-state.css';
  * Universal zero-data placeholder for empty panels, lists, and tables.
  */
 export default function EmptyState({
-  icon = '📁',
+  icon = null,
   title = 'No records found',
   message,
   action,

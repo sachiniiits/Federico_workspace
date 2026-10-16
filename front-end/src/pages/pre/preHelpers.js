@@ -10,7 +10,7 @@ export const STATUS_LABELS = {
   APPROVED: 'Approved',
   REJECTED: 'Rejected',
   CONSULTATION_DONE: 'Completed',
-  EMERGENCY: 'Pending',
+  CRITICAL: 'Critical',
   ADMITTED: 'Admitted',
   DISCHARGE_REQUESTED: 'Discharge Pending',
   DISCHARGE_APPROVED: 'Approved Discharge',
@@ -84,9 +84,9 @@ export function sortDoctorsForDepartment(doctors, department) {
 /**
  * Joins pre-requests to patients and doctors.
  *
- * Emits BOTH naming conventions for every field (patient_name AND patientName,
- * patient_uhid AND patientUhid, ...) because different PRE pages read different
- * spellings. Dropping either half breaks a page somewhere.
+ * Enriches each pre-request with canonical view properties (patientName,
+ * patientUhid, patientAge, doctorName, etc.) resolved directly from
+ * Table 10 (patients) and Table 12 (doctors).
  */
 export function joinPreRequestsWithPatients(requests, patients, doctors) {
   const patientsById = {};
@@ -107,27 +107,27 @@ export function joinPreRequestsWithPatients(requests, patients, doctors) {
     const patient = patientsById[r.patient_id] || {};
     const doctor = r.doctor_id ? doctorsById[r.doctor_id] : null;
 
-    const pName = patient.name || r.patient_name || r.patientName || 'Unknown Patient';
-    const pUhid = patient.uhid || r.uhid || r.patientUhid || '—';
-    const pAge = patient.dob ? formatAge(patient.dob) : r.patientAge || '—';
-    const pGender = patient.gender || r.patientGender || '—';
-    const pPhone = patient.phone || r.patientPhone || '—';
-    const pBlood = patient.blood_group || r.patientBloodGroup || '—';
-    const dName = doctor ? doctor.name : r.doctor_name || r.doctorName || '—';
-    const dSpec = doctor ? doctor.specialization : r.doctor_specialization || '—';
-    const dAvail = doctor ? doctor.available : Boolean(r.doctor_available);
+    const patientName = patient.name || 'Unknown Patient';
+    const patientUhid = patient.uhid || '—';
+    const patientAge = patient.dob ? formatAge(patient.dob) : '—';
+    const patientGender = patient.gender || '—';
+    const patientPhone = patient.phone || '—';
+    const patientBloodGroup = patient.blood_group || '—';
+    const doctorName = doctor ? doctor.name : '—';
+    const doctorSpecialization = doctor ? doctor.specialization : '—';
+    const doctorAvailable = doctor ? doctor.available : Boolean(r.doctor_available);
 
     return {
       ...r,
-      patient_name: pName, patientName: pName,
-      patient_uhid: pUhid, patientUhid: pUhid,
-      patient_age: pAge, patientAge: pAge,
-      patient_gender: pGender, patientGender: pGender,
-      patient_phone: pPhone, patientPhone: pPhone,
-      patient_blood_group: pBlood, patientBloodGroup: pBlood,
-      doctor_name: dName, doctorName: dName,
-      doctor_specialization: dSpec, doctorSpecialization: dSpec,
-      doctor_available: dAvail,
+      patientName,
+      patientUhid,
+      patientAge,
+      patientGender,
+      patientPhone,
+      patientBloodGroup,
+      doctorName,
+      doctorSpecialization,
+      doctor_available: doctorAvailable,
       department: r.department || (doctor ? doctor.specialization : 'General'),
     };
   });

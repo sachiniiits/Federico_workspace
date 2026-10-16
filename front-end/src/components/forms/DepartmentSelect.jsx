@@ -8,6 +8,7 @@
  * placeholder stays disabled+selected.
  */
 export default function DepartmentSelect({
+  departments,
   doctors,
   value,
   onChange,
@@ -16,8 +17,13 @@ export default function DepartmentSelect({
   className = '',
   style,
 }) {
-  const specializations = Array.from(
-    new Set((doctors || []).map((d) => (d.specialization || '').trim()).filter(Boolean)),
+  const rawList =
+    departments && departments.length > 0
+      ? departments
+      : (doctors || []).map((d) => (d.specialization || d.department || '').trim());
+
+  const options = Array.from(
+    new Set((rawList || []).map((s) => String(s || '').trim()).filter(Boolean)),
   ).sort((a, b) => a.localeCompare(b));
 
   return (
@@ -31,9 +37,9 @@ export default function DepartmentSelect({
       <option value="" disabled>
         {placeholder}
       </option>
-      {specializations.map((spec) => (
-        <option key={spec} value={spec}>
-          {spec}
+      {options.map((dept) => (
+        <option key={dept} value={dept}>
+          {dept}
         </option>
       ))}
     </select>

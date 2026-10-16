@@ -20,12 +20,22 @@
  *     ? Math.max(...dataStore.admissions.map(a => a.admission_id)) + 1
  *     : 501
  */
-function maxId(arr, field) {
-  if (!arr || arr.length === 0) return 0;
-  return arr.reduce((max, item) => {
+function maxId(arr, field, baseOffset = 0) {
+  if (!arr || arr.length === 0) return baseOffset > 0 ? baseOffset - 1 : 0;
+  const max = arr.reduce((acc, item) => {
     const val = Number(item[field]) || 0;
-    return val > max ? val : max;
+    return val > acc ? val : acc;
   }, 0);
+  return max > 0 ? max : (baseOffset > 0 ? baseOffset - 1 : 0);
 }
 
-module.exports = { maxId };
+function nextId(arr, field, startAt = 1) {
+  if (!arr || arr.length === 0) return startAt;
+  const max = arr.reduce((acc, item) => {
+    const val = Number(item[field]) || 0;
+    return val > acc ? val : acc;
+  }, 0);
+  return max >= startAt ? max + 1 : startAt;
+}
+
+module.exports = { maxId, nextId };

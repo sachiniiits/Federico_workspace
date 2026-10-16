@@ -11,8 +11,7 @@ import AppointmentRows from './AppointmentRows.jsx';
 import VisitItems from './VisitItems.jsx';
 import DocumentGroup from './DocumentGroup.jsx';
 import AppointmentsModal from './AppointmentsModal.jsx';
-import { BillSummaryModal, PatientPaymentModal } from './BillDetailsModal.jsx';
-import PatientDischargeBanner from './PatientDischargeBanner.jsx';
+import { BillSummaryModal } from './BillDetailsModal.jsx';
 import { openDigitalCopy } from './patientDocumentCopy.js';
 import { BillStatusBadge } from './patientDashboardHelpers.jsx';
 import { getEffectiveStatus, pastVisits, latestPastAppointment } from './patientDashboardUtils.js';
@@ -39,13 +38,9 @@ export default function DashboardPage() {
     documents,
     notifications,
     getBillingDocumentByRef,
-    billingSections,
-    raw,
-    payBill,
   } = usePatientStore();
 
   const [openModal, setOpenModal] = useState(null);
-  const [payingBill, setPayingBill] = useState(null);
 
   // The legacy page put .modal-open on <html> and <body> while any overlay was
   // visible; patient-dashboard.css locks scrolling off that class.
@@ -109,15 +104,6 @@ export default function DashboardPage() {
           Welcome back, <span>{profile ? profile.firstName : 'Patient'}</span>! Here&apos;s your health
           summary for today.
         </p>
-
-        <PatientDischargeBanner
-          bills={bills}
-          raw={raw}
-          billingSections={billingSections}
-          onPay={(b) => setPayingBill(b)}
-          onViewSummary={(doc) => viewDocument(doc)}
-          onViewReceipt={(doc) => viewDocument(doc)}
-        />
 
         <section className="dashboard-layout">
           <div className="content-area">
@@ -356,7 +342,7 @@ export default function DashboardPage() {
               <div id="patient-documents-list" className="hom-documents-wrap">
                 <div className="doc-group">
                   <div className="doc-group-header">
-                    <span className="doc-group-title">🧾 Receipts</span>
+                    <span className="doc-group-title">Receipts</span>
                   </div>
                   <DocumentGroup
                     containerId="documents-receipts"
@@ -369,7 +355,7 @@ export default function DashboardPage() {
 
                 <div className="doc-group">
                   <div className="doc-group-header">
-                    <span className="doc-group-title">📋 Discharge Summary</span>
+                    <span className="doc-group-title">Discharge Summary</span>
                   </div>
                   <DocumentGroup
                     containerId="documents-discharge"
@@ -382,7 +368,7 @@ export default function DashboardPage() {
 
                 <div className="doc-group">
                   <div className="doc-group-header">
-                    <span className="doc-group-title">📑 EOD Bills</span>
+                    <span className="doc-group-title">EOD Bills</span>
                   </div>
                   <DocumentGroup
                     containerId="documents-eod"
@@ -420,20 +406,6 @@ export default function DashboardPage() {
         onGoToBilling={() => {
           setOpenModal(null);
           navigate('/Patient/patient-billing.html');
-        }}
-      />
-      <PatientPaymentModal
-        open={Boolean(payingBill)}
-        bill={payingBill}
-        profile={profile}
-        onClose={() => setPayingBill(null)}
-        onConfirmPay={async (bill, method, refId) => {
-          try {
-            await payBill(bill, method, refId);
-            toast(`Payment confirmed via ${method}! Receipt generated.`, 'success');
-          } catch (err) {
-            toast(err?.message || 'Payment processing failed.', 'warning');
-          }
         }}
       />
     </>

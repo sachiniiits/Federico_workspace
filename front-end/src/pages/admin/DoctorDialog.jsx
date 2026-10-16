@@ -2,34 +2,25 @@
 
 import { useState } from 'react';
 import DialogShell from '../../components/layout/DialogShell.jsx';
+import Button from '../../components/ui/Button.jsx';
 import { api } from '../../api/index.js';
 import { toast } from '../../components/feedback/feedback.js';
 
-/**
- * Ported from the #doctor-dialog <dialog> in Admin/screen-05-people.html.
- *
- * The department <select> is built from ward names, with the doctor's current
- * department unshifted onto the front when it is not among them, so editing a
- * doctor never silently changes their department.
- */
-const BLANK = { name: '', specialization: '', department: '', phone: '', email: '' };
+const BLANK = { name: '', specialization: '', phone: '', email: '' };
 
-export default function DoctorDialog({ open, doctor, wards, onClose, onSaved }) {
-  // Mounted only while open (and re-keyed per doctor), so the fields always
-  // start from the doctor being edited, or blank for a new one.
+export default function DoctorDialog({ open, doctor, onClose, onSaved }) {
   if (!open) return null;
   return (
-    <DoctorForm key={doctor ? doctor.doctor_id : 'new'} doctor={doctor} wards={wards} onClose={onClose} onSaved={onSaved} />
+    <DoctorForm key={doctor ? doctor.doctor_id : 'new'} doctor={doctor} onClose={onClose} onSaved={onSaved} />
   );
 }
 
-function DoctorForm({ doctor, wards, onClose, onSaved }) {
+function DoctorForm({ doctor, onClose, onSaved }) {
   const [f, setF] = useState(() =>
     doctor
       ? {
           name: doctor.name || '',
           specialization: doctor.specialization || '',
-          department: doctor.department || '',
           phone: doctor.phone || '',
           email: doctor.email || '',
         }
@@ -37,16 +28,11 @@ function DoctorForm({ doctor, wards, onClose, onSaved }) {
   );
   const set = (k) => (e) => setF((p) => ({ ...p, [k]: e.target.value }));
 
-  const names = (wards || []).map((w) => w.ward_name);
-  const current = doctor ? doctor.department || '' : '';
-  const options = current && !names.includes(current) ? [current, ...names] : names;
-
   async function handleSubmit(e) {
     e.preventDefault();
     const payload = {
       name: f.name.trim(),
-      specialization: f.specialization.trim() || undefined,
-      department: f.department || undefined,
+      specialization: f.specialization.trim() || 'General Practitioner',
       phone: f.phone.trim() || undefined,
       email: f.email.trim() || undefined,
     };
@@ -71,38 +57,32 @@ function DoctorForm({ doctor, wards, onClose, onSaved }) {
       open
       onClose={onClose}
       title={doctor ? 'Edit ' + doctor.name : 'Add a Doctor'}
-      subtitle="Configure doctor directory profile and department assignment."
+      subtitle="Configure medical doctor profile, clinical specialization, and contact details."
     >
       <form id="doctor-form" className="dialog-form" onSubmit={handleSubmit}>
         <div className="md-field">
-          <label htmlFor="doctor-name">Name</label>
+          <label htmlFor="doctor-name">Doctor Name</label>
           <input id="doctor-name" required placeholder="Dr. …" value={f.name} onChange={set('name')} />
         </div>
         <div className="md-field">
-          <label htmlFor="doctor-spec">Specialization</label>
-          <input id="doctor-spec" required placeholder="e.g. Cardiology" value={f.specialization} onChange={set('specialization')} />
+          <label htmlFor="doctor-spec">Medical Specialization</label>
+          <input id="doctor-spec" required placeholder="e.g. Cardiology, Neurology, Pediatrics" value={f.specialization} onChange={set('specialization')} />
         </div>
         <div className="md-field">
-          <label htmlFor="doctor-dept">Department</label>
-          <select id="doctor-dept" className="input" value={f.department} onChange={set('department')}>
-            {options.length === 0 ? (
-              <option value="">General</option>
-            ) : (
-              options.map((n) => <option key={n} value={n}>{n}</option>)
-            )}
-          </select>
+          <label htmlFor="doctor-phone">Phone Number</label>
+          <input id="doctor-phone" placeholder="e.g. 9876543210" value={f.phone} onChange={set('phone')} />
         </div>
         <div className="md-field">
-          <label htmlFor="doctor-phone">Phone</label>
-          <input id="doctor-phone" placeholder="Optional" value={f.phone} onChange={set('phone')} />
-        </div>
-        <div className="md-field">
-          <label htmlFor="doctor-email">Email</label>
-          <input id="doctor-email" type="email" placeholder="Optional" value={f.email} onChange={set('email')} />
+          <label htmlFor="doctor-email">Email Address</label>
+          <input id="doctor-email" type="email" placeholder="e.g. doctor@hospital.com" value={f.email} onChange={set('email')} />
         </div>
         <div className="md-dialog-actions">
-          <button type="button" className="btn btn-outline btn-default" id="doctor-cancel" onClick={onClose}>Cancel</button>
-          <button type="submit" className="btn btn-primary btn-default">Save</button>
+          <Button variant="outline" type="button" id="doctor-cancel" onClick={onClose}>
+            Cancel
+          </Button>
+          <Button variant="primary" type="submit">
+            Save
+          </Button>
         </div>
       </form>
     </DialogShell>

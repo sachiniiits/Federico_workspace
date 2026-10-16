@@ -15,11 +15,19 @@ function b(res) {
 describe('AppController (e2e)', () => {
   const app = createApp();
 
+  async function login(email, password) {
+    const res = await request(app)
+      .post('/auth/login')
+      .send({ email, password })
+      .expect(200);
+    return res.body;
+  }
+
   it('/ (GET)', () => {
     return request(app).get('/').expect(200).expect('Hello World!');
   });
 
-  it('rejects protected routes without an x-role header (403)', () => {
+  it('rejects protected routes without session auth (403)', () => {
     return request(app)
       .get('/doctor')
       .expect(403)
@@ -30,14 +38,26 @@ describe('AppController (e2e)', () => {
       });
   });
 
-  it('allows ADMIN to read doctors', () => {
-    return request(app).get('/doctor').set('x-role', 'ADMIN').expect(200);
+  it('rejects protected routes with spoofed x-role header without session (403)', () => {
+    return request(app)
+      .get('/doctor')
+      .set('x-role', 'ADMIN')
+      .expect(403);
   });
 
-  it('returns Nest-style 400 with field errors on invalid doctor payload', () => {
+  it('allows authenticated Admin to read doctors', async () => {
+    const admin = await login('owner.admin@citygen.com', 'Owner@123');
+    return request(app)
+      .get('/doctor')
+      .set('Authorization', `Bearer ${admin.token}`)
+      .expect(200);
+  });
+
+  it('returns Nest-style 400 with field errors on invalid doctor payload', async () => {
+    const admin = await login('owner.admin@citygen.com', 'Owner@123');
     return request(app)
       .post('/doctor')
-      .set('x-role', 'SUPER_USER')
+      .set('Authorization', `Bearer ${admin.token}`)
       .send({ name: '' })
       .expect(400)
       .expect((res) => {
@@ -624,13 +644,11 @@ describe('Multi-tenancy — Platform Super User, organizations, feature flags, d
       .expect(403);
   });
 
-  it('legacy x-role-only callers keep seeing organization 1 exactly as before (backward compatibility)', async () => {
-    const res = await request(app)
+  it('rejects legacy x-role-only callers without session token (403)', async () => {
+    await request(app)
       .get('/doctor')
       .set('x-role', 'ADMIN')
-      .expect(200);
-    if (b(res).some((d) => d.organization_id !== 1))
-      throw new Error('Legacy caller must only see organization 1 data');
+      .expect(403);
   });
 });
 

@@ -31,7 +31,9 @@
   left: 12px;
   color: var(--color-muted-fg, #64748b);
   pointer-events: none;
-  font-size: 14px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .search-toolbar-input {

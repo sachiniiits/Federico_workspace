@@ -92,9 +92,13 @@ npm run start:dev
 
 # or production start
 npm start
+
+# Reset database to default mock data (38 collections, 13 users, 29 patients)
+npm run db:reset
 ```
 - Health Check: `http://localhost:3000/health`
 - API Documentation (Swagger): `http://localhost:3000/api`
+- Reset Database: `npm run db:reset` (runs `scripts/reset-database.js` to restore `data/db.json` from `dataStore.js` and reload nodemon)
 
 ### 2. Frontend — `http://localhost:5173`
 ```bash

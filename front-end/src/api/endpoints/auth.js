@@ -32,11 +32,18 @@ export const auth = {
         role: payload.role || (payload.user ? payload.user.role : null),
         roleId: payload.user ? payload.user.role_id : null,
         organizationId:
-          payload.organizationId || (payload.user ? payload.user.organization_id : null),
-        hospitalId: payload.hospitalId || (payload.user ? payload.user.hospital_id : null),
+          payload.organizationId ||
+          (payload.user ? payload.user.organization_id : null) ||
+          (payload.tenant ? payload.tenant.organization_id : null),
+        hospitalId:
+          payload.hospitalId ||
+          (payload.user ? payload.user.hospital_id : null) ||
+          (payload.tenant ? payload.tenant.hospital_id : null),
         patientId: payload.patientId || (payload.patient ? payload.patient.patient_id : null),
         orgName:
-          payload.orgName || (payload.organization ? payload.organization.organization_name : null),
+          payload.orgName ||
+          (payload.organization ? payload.organization.organization_name : null) ||
+          (payload.tenant ? payload.tenant.organization_name : null),
         orgBranding: payload.orgBranding || null,
       });
     }
@@ -77,6 +84,10 @@ export const auth = {
 
   demoAccounts() {
     return request('GET', '/auth/demo-accounts', undefined, { auth: false });
+  },
+
+  changePassword(newPassword, currentPassword) {
+    return request('PUT', '/auth/password', { newPassword, currentPassword });
   },
 
   /** Best-effort server-side invalidation; the local session clears regardless. */

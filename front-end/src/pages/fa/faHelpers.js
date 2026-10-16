@@ -70,7 +70,7 @@ export async function loadBillingOverview() {
           r.patient_id === admission.patient_id &&
           (r.bed_id === admission.bed_id || !admission.bed_id),
       ) || null;
-    const doctorId = admission.doctor_id || preRequest?.doctor_id;
+    const doctorId = preRequest?.doctor_id;
     const doctor = doctorId ? doctorsById[doctorId] : null;
     const ledger = ledgersByAdmission[admission.admission_id] || null;
 
@@ -83,7 +83,7 @@ export async function loadBillingOverview() {
         : admission.visit_type === 'OPD'
           ? 'OPD / Consultation'
           : '-',
-      department: admission.department || preRequest?.department || 'General',
+      department: preRequest?.department || 'General',
       doctorName: doctor ? doctor.name : '-',
       preRequest,
       ledger,

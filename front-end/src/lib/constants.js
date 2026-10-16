@@ -24,7 +24,7 @@ export const PRE_STATUS = Object.freeze({
   REJECTED: 'Rejected',
   ADMITTED: 'Admitted',
   DISCHARGE: 'Discharge',
-  EMERGENCY: 'Emergency',
+  CRITICAL: 'Critical',
 });
 
 export const ADMISSION_STATUS = Object.freeze({

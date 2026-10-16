@@ -4,6 +4,10 @@ import { useState } from 'react';
 import { api } from '../../api/index.js';
 import { useApi } from '../../hooks/useApi.js';
 import { useDocumentTitle } from '../../hooks/useDocumentTitle.js';
+import Badge from '../../components/ui/Badge.jsx';
+import EmptyState from '../../components/ui/EmptyState.jsx';
+import PageHeader from '../../components/layout/PageHeader.jsx';
+import SearchToolbar from '../../components/ui/SearchToolbar.jsx';
 import { to12Hour } from './preHelpers.js';
 
 /**
@@ -48,7 +52,13 @@ export default function DoctorRosterPage() {
         status: normalizedStatus,
         rawStatus,
         dutyHours: startTimeFormatted + ' – ' + endTimeFormatted,
-        days: avail?.days || avail?.available_days || 'Mon – Sat',
+        days: avail?.available_date
+          ? new Date(avail.available_date + 'T00:00:00').toLocaleDateString(undefined, {
+              weekday: 'short',
+              month: 'short',
+              day: 'numeric',
+            })
+          : 'Mon – Sat',
       };
     });
   }, []);
@@ -69,31 +79,40 @@ export default function DoctorRosterPage() {
     );
   });
 
-  const chipStyle = { fontSize: 11, padding: '3px 8px', borderRadius: 12 };
-
   return (
     <>
       <div className="container">
-        <div className="directory-header">
-          <div className="directory-title-group">
-            <h2>Doctor Availability &amp; Rosters</h2>
-            <p>Review active physician duty hours, consultation slots, and departmental specializations.</p>
-          </div>
-          <div className="directory-toolbar">
-            <input type="text" id="doctorSearchInput" placeholder="Search doctor, dept, ID..." className="directory-search-input"
-              value={query} onChange={(e) => setQuery(e.target.value)} />
-            <select id="filterSpecialization" className="directory-filter-select" value={specFilter} onChange={(e) => setSpecFilter(e.target.value)}>
-              <option value="">All Specializations</option>
-              {specs.map((s) => <option key={s} value={s}>{s}</option>)}
-            </select>
-            <select id="filterStatus" className="directory-filter-select" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
-              <option value="">All Statuses</option>
-              <option value="Available">Available</option>
-              <option value="In Surgery">In Surgery</option>
-              <option value="Unavailable">Unavailable / Off-Duty</option>
-            </select>
-          </div>
-        </div>
+        <PageHeader
+          title="Doctor Availability & Rosters"
+          subtitle="Review active physician duty hours, consultation slots, and departmental specializations."
+        />
+        <SearchToolbar
+          searchQuery={query}
+          onSearchChange={setQuery}
+          placeholder="Search doctor, dept, ID..."
+          filters={[
+            {
+              id: 'spec',
+              value: specFilter,
+              onChange: setSpecFilter,
+              options: [
+                { value: '', label: 'All Specializations' },
+                ...specs.map((s) => ({ value: s, label: s })),
+              ],
+            },
+            {
+              id: 'status',
+              value: statusFilter,
+              onChange: setStatusFilter,
+              options: [
+                { value: '', label: 'All Statuses' },
+                { value: 'Available', label: 'Available' },
+                { value: 'In Surgery', label: 'In Surgery' },
+                { value: 'Unavailable', label: 'Unavailable / Off-Duty' },
+              ],
+            },
+          ]}
+        />
 
         <div className="table-container" style={{ margin: 0 }}>
           <table>
@@ -109,18 +128,18 @@ export default function DoctorRosterPage() {
             </thead>
             <tbody id="doctorTable">
               {error ? (
-                <tr><td colSpan="6" style={{ color: 'var(--status-error)' }}>Could not load doctor roster: {error.message}</td></tr>
+                <EmptyState asTableRow colSpan={6} icon={null} title="Could not load doctor roster" message={error.message} />
               ) : filtered.length === 0 ? (
-                <tr><td colSpan="6" style={{ textAlign: 'center', padding: 32, color: 'var(--color-muted-fg)' }}>No matching doctors found</td></tr>
+                <EmptyState asTableRow colSpan={6} icon={null} title="No matching doctors found" />
               ) : (
                 filtered.map((d) => {
                   const badge =
                     d.status === 'In Surgery' ? (
-                      <span className="status pending" style={{ ...chipStyle, background: '#fef3c7', color: '#b45309', border: '1px solid #fde68a' }}>In Surgery</span>
+                      <Badge variant="warning">In Surgery</Badge>
                     ) : d.status === 'Unavailable' ? (
-                      <span className="status pending" style={{ ...chipStyle, background: '#f1f5f9', color: '#475569', border: '1px solid #e2e8f0' }}>Off-Duty</span>
+                      <Badge variant="neutral">Off-Duty</Badge>
                     ) : (
-                      <span className="status confirmed" style={{ ...chipStyle, background: '#dcfce7', color: '#15803d', border: '1px solid #bbf7d0' }}>Available</span>
+                      <Badge variant="success">Available</Badge>
                     );
 
                   return (

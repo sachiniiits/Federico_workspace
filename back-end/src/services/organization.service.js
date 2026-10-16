@@ -2,7 +2,6 @@
 
 const dataStore = require('../store/dataStore');
 const { maxId } = require('../utils/maxId');
-const { MODULE_CODES, BACKFILL_GRANT_MODULES } = require('../utils/tenant');
 const serviceCatalog = require('../config/serviceCatalog');
 const resourceCatalog = require('../config/resourceCatalog');
 const { destroySessionsForUser } = require('../store/sessionStore');
@@ -81,13 +80,14 @@ function findAll() {
 }
 
 function findById(id) {
-  return dataStore.organizations.find((o) => o.organization_id === id) || null;
+  const numId = Number(id);
+  return dataStore.organizations.find((o) => Number(o.organization_id) === numId) || null;
 }
 
 function create(payload) {
   const newOrg = {
     organization_id:
-      maxId(dataStore.organizations, 'organization_id') + 1 || 1,
+      maxId(dataStore.organizations, 'organization_id', 1) + 1,
     name: payload.name,
     slug: slugify(payload.name),
     // Callers validate a supplied domain first (validateEmailDomain).
@@ -194,86 +194,6 @@ function createHospital(organizationId, payload) {
   return newHospital;
 }
 
-// ---- Feature flags (organizationModules) ----
-
-/**
- * Every module gets an explicit row (true or false) — see requireModule() in
- * middleware/tenant.js, which treats a missing row as "not configured" rather
- * than implicitly enabled.
- *
- * `instancesMap` (optional) is { CODE: count } — how many billable instances
- * of that service the org provisioned. Usage-based billing multiplies each
- * enabled service's unit price by its instance count. Missing / <1 -> 1.
- */
-function setModuleFlags(organizationId, enabledCodes, instancesMap) {
-  const oid = Number(organizationId);
-  const enabledSet = new Set(enabledCodes || []);
-  const instances = instancesMap || {};
-  MODULE_CODES.forEach((code) => {
-    setModuleFlag(oid, code, enabledSet.has(code), instances[code]);
-  });
-  return enabledModulesFor(oid);
-}
-
-function setModuleFlag(organizationId, moduleCode, enabled, instanceCount) {
-  const oid = Number(organizationId);
-  const code = String(moduleCode).toUpperCase();
-  const existing = dataStore.organizationModules.find(
-    (m) => m.organization_id === oid && m.module_code === code,
-  );
-  const normalizedInstances =
-    instanceCount === undefined ? undefined : Math.max(1, Number(instanceCount) || 1);
-  if (existing) {
-    existing.enabled = enabled;
-    if (normalizedInstances !== undefined) existing.instances = normalizedInstances;
-    if (existing.instances === undefined) existing.instances = 1;
-    existing.updated_at = new Date().toISOString();
-    return existing;
-  }
-  const newFlag = {
-    organization_id: oid,
-    module_code: code,
-    enabled,
-    instances: normalizedInstances === undefined ? 1 : normalizedInstances,
-    updated_at: new Date().toISOString(),
-  };
-  dataStore.organizationModules.push(newFlag);
-  return newFlag;
-}
-
-function enabledModulesFor(organizationId) {
-  const oid = Number(organizationId);
-  return dataStore.organizationModules
-    .filter((m) => m.organization_id === oid && m.enabled)
-    .map((m) => m.module_code);
-}
-
-/** { CODE: instanceCount } for the org's ENABLED services only. */
-function moduleInstancesFor(organizationId) {
-  const oid = Number(organizationId);
-  const out = {};
-  dataStore.organizationModules
-    .filter((m) => m.organization_id === oid && m.enabled)
-    .forEach((m) => {
-      out[m.module_code] = Math.max(1, Number(m.instances) || 1);
-    });
-  return out;
-}
-
-function allModuleFlagsFor(organizationId) {
-  const oid = Number(organizationId);
-  return MODULE_CODES.map((code) => {
-    const flag = dataStore.organizationModules.find(
-      (m) => m.organization_id === oid && m.module_code === code,
-    );
-    return {
-      module_code: code,
-      enabled: flag ? flag.enabled : false,
-      instances: flag && flag.instances ? Math.max(1, Number(flag.instances) || 1) : 1,
-    };
-  });
-}
-
 // ---- Resource-level entitlements (organizationResources) ----
 
 /**
@@ -359,38 +279,6 @@ function resourceCatalogFor(organizationId) {
   return out;
 }
 
-/**
- * Boot-time reconciliation. Guarantees every organization has an explicit
- * organizationModules row for every module code in the catalog, so
- * requireModule() (fail-closed) never 403s an org just because a newly
- * added module code has no row yet. Pre-existing orgs are GRANTED the
- * modules listed in BACKFILL_GRANT_MODULES (so yesterday's working orgs
- * keep working); any other newly added code defaults to disabled.
- */
-function syncOrganizationConfig() {
-  if (!Array.isArray(dataStore.organizationResources)) {
-    dataStore.organizationResources = [];
-  }
-  const grant = new Set(BACKFILL_GRANT_MODULES);
-  dataStore.organizations.forEach((org) => {
-    const oid = org.organization_id;
-    MODULE_CODES.forEach((code) => {
-      const existing = dataStore.organizationModules.find(
-        (m) => m.organization_id === oid && m.module_code === code,
-      );
-      if (!existing) {
-        dataStore.organizationModules.push({
-          organization_id: oid,
-          module_code: code,
-          enabled: grant.has(code),
-          instances: 1,
-          updated_at: new Date().toISOString(),
-        });
-      }
-    });
-  });
-}
-
 // ---- Usage / quotas ----
 
 function quotasFor(organizationId) {
@@ -406,13 +294,9 @@ function usageFor(organizationId) {
   const sub =
     dataStore.subscriptions.find((s) => s.organization_id === oid) || null;
 
-  const enabledModules = enabledModulesFor(oid);
-  // Usage-based billing: pay per enabled service × the number of instances
-  // of that service the org provisioned at onboarding, PLUS resource-level
-  // line items (beds, seats, terminals — config/resourceCatalog.js).
+  const branchCount = hospitalsFor(oid).length || 1;
   const cost = serviceCatalog.computeCost(
-    moduleInstancesFor(oid),
-    1,
+    branchCount,
     resourceQuantitiesFor(oid),
   );
 
@@ -472,7 +356,6 @@ function usageFor(organizationId) {
           renews_at: sub.renews_at,
         }
       : null,
-    enabled_modules: enabledModules,
   };
 }
 
@@ -514,15 +397,9 @@ module.exports = {
   hospitalsFor,
   primaryHospitalFor,
   createHospital,
-  setModuleFlags,
-  setModuleFlag,
-  enabledModulesFor,
-  moduleInstancesFor,
-  allModuleFlagsFor,
   setResourceQuantities,
   resourceQuantitiesFor,
   resourceCatalogFor,
-  syncOrganizationConfig,
   quotasFor,
   usageFor,
   marketplaceListing,

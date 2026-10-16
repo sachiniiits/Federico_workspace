@@ -5,8 +5,9 @@ const { maxId } = require('../utils/maxId');
 const planService = require('./subscriptionPlan.service');
 
 function findByOrg(organizationId) {
+  const numId = Number(organizationId);
   return (
-    dataStore.subscriptions.find((s) => s.organization_id === organizationId) ||
+    dataStore.subscriptions.find((s) => Number(s.organization_id) === numId) ||
     null
   );
 }

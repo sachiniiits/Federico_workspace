@@ -85,9 +85,6 @@ const ROUTES = [
   ['Wards', 'get', '/ward/bed-requests', 'Get all bed allocation requests'],
   ['Wards', 'post', '/ward/bed-requests', 'Create a bed allocation request'],
   ['Wards', 'put', '/ward/bed-requests/{id}', 'Allocate or reject a bed request'],
-  ['Wards', 'get', '/ward/emergency', 'Get all emergency intake records'],
-  ['Wards', 'post', '/ward/emergency', 'Create an emergency intake record'],
-  ['Wards', 'put', '/ward/emergency/{id}', 'Update emergency intake status'],
 
   // Inventory
   ['Inventory', 'get', '/inventory/items', 'Get all inventory items'],
@@ -201,12 +198,6 @@ function buildDocument() {
           scheme: 'bearer',
           bearerFormat: 'JWT',
           description: 'Session bearer token obtained from /auth/login/{actor}, /auth/login or /platform/auth/login',
-        },
-        xRoleAuth: {
-          type: 'apiKey',
-          in: 'header',
-          name: 'x-role',
-          description: 'Legacy role header for backward compatibility (e.g. ADMIN, SUPER_USER)',
         },
       },
     },

@@ -23,11 +23,6 @@ const createHospitalRules = [
   { field: 'phone', checks: ['isString'], optional: true },
 ];
 
-const setModuleFlagRules = [
-  { field: 'enabled', checks: ['isBoolean'] },
-  { field: 'instances', checks: ['isInt'], optional: true },
-];
-
 const createApiKeyRules = [
   { field: 'label', checks: ['isString'], optional: true },
 ];
@@ -54,7 +49,6 @@ module.exports = {
   platformLoginRules,
   provisionOrganizationRules,
   createHospitalRules,
-  setModuleFlagRules,
   createApiKeyRules,
   createPlanRules,
   setSubscriptionRules,
