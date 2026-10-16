@@ -26,6 +26,16 @@ describe('Patient Appointment Advance Booking Constraint Suite', () => {
     return toIso(date);
   }
 
+  function getNextWeekday(baseIso, daysAhead = 1) {
+    let dateStr = addDays(baseIso, daysAhead);
+    const [y, m, d] = dateStr.split('-').map(Number);
+    const date = new Date(Date.UTC(y, m - 1, d));
+    const day = date.getUTCDay(); // 0 is Sun, 6 is Sat
+    if (day === 0) dateStr = addDays(dateStr, 1);
+    else if (day === 6) dateStr = addDays(dateStr, 2);
+    return dateStr;
+  }
+
   const TODAY = toIso(new Date());
 
   beforeAll(() => {
@@ -181,8 +191,8 @@ describe('Patient Appointment Advance Booking Constraint Suite', () => {
 
     it('stores symptoms note and document_urls and propagates them to confirmed appointment', async () => {
       const preTok = createSession({ userId: 105, role: 'PRE', organizationId: 1, hospitalId: 1 });
-      // 2026-10-16 is a Friday (on-duty weekday for doctor 401)
-      const targetDate = addDays(TODAY, 1);
+      // Ensure targetDate is an on-duty weekday (Mon-Fri) for doctor 401
+      const targetDate = getNextWeekday(TODAY, 1);
       const symptomsText = 'Severe migraine and fever for 2 days';
       const fileUrls = ['/api/uploads/documents/rx-101.pdf', '/api/uploads/documents/lab-202.png'];
 
