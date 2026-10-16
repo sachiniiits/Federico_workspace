@@ -295,31 +295,6 @@ function createHospital(req, res) {
   sendResult(res, result, 201);
 }
 
-// ---- Feature flags ----
-
-function findModuleFlags(req, res) {
-  sendResult(res, organizationService.allModuleFlagsFor(+req.params.id), 200);
-}
-
-function setModuleFlag(req, res) {
-  const result = organizationService.setModuleFlag(
-    +req.params.id,
-    req.params.moduleCode,
-    Boolean(req.body.enabled),
-    req.body.instances,
-  );
-  logger.log(
-    `🚩 MODULE FLAG  organization_id=${req.params.id}  module=${req.params.moduleCode}  enabled=${req.body.enabled}  instances=${req.body.instances ?? '(unchanged)'}`,
-  );
-  platformActivityService.log(
-    req.session.userId,
-    'SET_MODULE_FLAG',
-    +req.params.id,
-    `${req.params.moduleCode} ${req.body.enabled ? 'enabled' : 'disabled'}`,
-  );
-  sendResult(res, result, 200);
-}
-
 // ---- Resource-level entitlements ----
 
 function moduleResourceCatalog(req, res) {
@@ -468,11 +443,15 @@ function getGlobalRates(req, res) {
       updated_at: new Date().toISOString(),
     };
   }
-  sendResult(res, dataStore.platformRates, 200);
+  const payload = {
+    ...dataStore.platformRates,
+    base_fee: dataStore.platformRates.base_platform_fee,
+  };
+  sendResult(res, payload, 200);
 }
 
 function updateGlobalRates(req, res) {
-  const { base_platform_fee, rates } = req.body;
+  const { base_platform_fee, base_fee, rates } = req.body;
   if (!dataStore.platformRates) {
     dataStore.platformRates = {
       base_platform_fee: 3000,
@@ -490,8 +469,9 @@ function updateGlobalRates(req, res) {
       updated_at: new Date().toISOString(),
     };
   }
-  if (base_platform_fee !== undefined) {
-    dataStore.platformRates.base_platform_fee = Math.max(0, Number(base_platform_fee) || 0);
+  const effectiveBaseFee = base_platform_fee !== undefined ? base_platform_fee : base_fee;
+  if (effectiveBaseFee !== undefined) {
+    dataStore.platformRates.base_platform_fee = Math.max(0, Number(effectiveBaseFee) || 0);
   }
   if (rates && typeof rates === 'object') {
     Object.keys(rates).forEach((k) => {
@@ -507,7 +487,11 @@ function updateGlobalRates(req, res) {
     'Updated global SaaS platform pricing rates',
   );
 
-  sendResult(res, dataStore.platformRates, 200);
+  const payload = {
+    ...dataStore.platformRates,
+    base_fee: dataStore.platformRates.base_platform_fee,
+  };
+  sendResult(res, payload, 200);
 }
 
 module.exports = {
@@ -528,8 +512,6 @@ module.exports = {
   platformUsage,
   findHospitals,
   createHospital,
-  findModuleFlags,
-  setModuleFlag,
   moduleResourceCatalog,
   findResources,
   setResources,

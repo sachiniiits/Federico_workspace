@@ -26,7 +26,7 @@ export default function RestockModal({ open, initialItemId, data, onClose, onCha
 function RestockForm({ initialItemId, data, onClose, onChanged }) {
   const [itemId, setItemId] = useState(initialItemId ? String(initialItemId) : '');
   const [qty, setQty] = useState(String(DEFAULT_RESTOCK_QUANTITY));
-  const [supplier, setSupplier] = useState('MediSupply Co.');
+  const [supplier, setSupplier] = useState('');
   const [priority, setPriority] = useState('normal');
   const [notes, setNotes] = useState('');
   const [invoiceFile, setInvoiceFile] = useState(null);
@@ -83,6 +83,9 @@ function RestockForm({ initialItemId, data, onClose, onChanged }) {
         quantity_requested: quantity,
         status: 'PENDING',
         requested_by: session ? session.userId : null,
+        supplier: supplierName,
+        priority,
+        notes: noteText,
         invoice_url: invoiceUrl,
       });
       toast('Purchase Order submitted for ' + quantity + 'x ' + selected.item_name + '.', 'success');
@@ -100,66 +103,246 @@ function RestockForm({ initialItemId, data, onClose, onChanged }) {
       open
       onClose={onClose}
       title="Request Restock / Purchase Order"
+      subtitle="Generate a non-clinical inventory supply purchase order for Finance approval"
+      size="md"
       footer={
-        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12, width: '100%' }}>
-          <button className="btn btn-secondary btn-default" onClick={onClose}>Cancel</button>
-          <button className="btn btn-primary btn-default" onClick={submit}>Submit PO Request</button>
+        <div className="restock-footer">
+          <button type="button" className="restock-btn-cancel" onClick={onClose}>
+            Cancel
+          </button>
+          <button type="button" className="restock-btn-submit" onClick={submit}>
+            Submit PO Request
+          </button>
         </div>
       }
     >
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-        <div>
-          <label style={{ display: 'block', fontSize: 14, fontWeight: 500, marginBottom: 8 }}>Supply Item *</label>
-          <select className="input" id="restock-item-select" style={{ appearance: 'auto' }} value={itemId} onChange={(e) => { setItemId(e.target.value); setError(''); }}>
-            <option value="">Select supply item...</option>
-            {data.items.map((i) => (
-              <option key={i.item_id} value={i.item_id}>{i.item_name} ({i.stock_quantity} available)</option>
-            ))}
-          </select>
-        </div>
-        <div>
-          <label style={{ display: 'block', fontSize: 14, fontWeight: 500, marginBottom: 8 }}>Quantity *</label>
-          <input type="number" className="input" id="restock-qty" min="1" step="1" value={qty} onChange={(e) => setQty(e.target.value)} />
-        </div>
-        <div>
-          <label style={{ display: 'block', fontSize: 14, fontWeight: 500, marginBottom: 8 }}>Supplier Name *</label>
-          <input type="text" className="input" id="restock-supplier" placeholder="e.g. MediSupply Co., Global Health Logistics"
-            value={supplier} onChange={(e) => setSupplier(e.target.value)} />
-        </div>
-        <div>
-          <label style={{ display: 'block', fontSize: 14, fontWeight: 500, marginBottom: 8 }}>Priority</label>
-          <div style={{ display: 'flex', gap: 12 }}>
-            <button className={priority === 'normal' ? 'btn btn-primary btn-default' : 'btn btn-outline btn-default'} id="btn-priority-normal" style={{ flex: 1 }} onClick={() => setPriority('normal')}>
-              Normal
-            </button>
-            <button className={priority === 'urgent' ? 'btn btn-primary btn-default' : 'btn btn-outline btn-default'} id="btn-priority-urgent" style={{ flex: 1 }} onClick={() => setPriority('urgent')}>
-              Urgent
-            </button>
+      <div className="restock-form-container">
+        {/* Row 1: Supply Item */}
+        <div className="restock-form-field">
+          <label htmlFor="restock-item-select" className="restock-label">
+            Supply Item <span className="restock-req">*</span>
+          </label>
+          <div className="restock-select-wrapper">
+            <select
+              className="restock-select"
+              id="restock-item-select"
+              value={itemId}
+              onChange={(e) => {
+                setItemId(e.target.value);
+                setError('');
+              }}
+            >
+              <option value="">Select supply item...</option>
+              {data.items.map((i) => (
+                <option key={i.item_id} value={i.item_id}>
+                  {i.item_name} ({i.stock_quantity} available)
+                </option>
+              ))}
+            </select>
+            <svg
+              className="restock-select-chevron"
+              width="14"
+              height="14"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden="true"
+            >
+              <polyline points="6 9 12 15 18 9" />
+            </svg>
           </div>
         </div>
-        <div style={{ background: 'var(--neutral-bg)', padding: 16, borderRadius: 'var(--radius-base)' }}>
-          <p style={{ fontSize: 14, color: 'var(--text-secondary)', margin: 0 }}>
-            Estimated cost:{' '}
-            <span id="restock-calc-text">
-              {!item ? '₹0 × 0 = ' : cost === null ? 'No linked service rate — ' : formatCurrency(cost) + ' × ' + quantityNum + ' = '}
-            </span>{' '}
-            <span style={{ fontWeight: 600, color: 'var(--text-primary)' }} id="restock-total-cost">
-              {!item ? '₹0' : cost === null ? 'Estimate unavailable' : formatCurrency(cost * quantityNum)}
+
+        {/* Row 2: Quantity & Priority (2 columns) */}
+        <div className="restock-form-grid">
+          <div className="restock-form-field">
+            <label htmlFor="restock-qty" className="restock-label">
+              Quantity <span className="restock-req">*</span>
+            </label>
+            <input
+              type="number"
+              className="restock-input"
+              id="restock-qty"
+              min="1"
+              step="1"
+              value={qty}
+              onChange={(e) => setQty(e.target.value)}
+            />
+          </div>
+
+          <div className="restock-form-field">
+            <span className="restock-label">Priority</span>
+            <div className="restock-priority-group" role="radiogroup" aria-label="Priority">
+              <button
+                type="button"
+                className={`restock-priority-btn ${priority === 'normal' ? 'is-active-normal' : ''}`}
+                id="btn-priority-normal"
+                onClick={() => setPriority('normal')}
+              >
+                Normal
+              </button>
+              <button
+                type="button"
+                className={`restock-priority-btn ${priority === 'urgent' ? 'is-active-urgent' : ''}`}
+                id="btn-priority-urgent"
+                onClick={() => setPriority('urgent')}
+              >
+                <svg
+                  width="12"
+                  height="12"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  aria-hidden="true"
+                >
+                  <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+                  <line x1="12" y1="9" x2="12" y2="13" />
+                  <line x1="12" y1="17" x2="12.01" y2="17" />
+                </svg>
+                Urgent
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Row 3: Supplier Name */}
+        <div className="restock-form-field">
+          <label htmlFor="restock-supplier" className="restock-label">
+            Supplier Name <span className="restock-req">*</span>
+          </label>
+          <input
+            type="text"
+            className="restock-input"
+            id="restock-supplier"
+            placeholder="e.g. MediSupply Co., Global Health Logistics"
+            value={supplier}
+            onChange={(e) => setSupplier(e.target.value)}
+          />
+        </div>
+
+        {/* Row 4: Estimated Cost Card */}
+        <div className="restock-cost-card">
+          <div className="restock-cost-breakdown">
+            <span className="restock-cost-title">Cost Estimation</span>
+            <span className="restock-cost-formula" id="restock-calc-text">
+              {!item ? '₹0 × 0' : cost === null ? 'No linked service rate' : `${formatCurrency(cost)} × ${quantityNum} units`}
             </span>
-          </p>
+          </div>
+          <div className="restock-cost-total" id="restock-total-cost">
+            {!item ? '₹0' : cost === null ? 'Estimate unavailable' : formatCurrency(cost * quantityNum)}
+          </div>
         </div>
-        <div>
-          <label style={{ display: 'block', fontSize: 14, fontWeight: 500, marginBottom: 8 }}>Notes (Optional)</label>
-          <textarea className="input" id="restock-notes" style={{ height: 80, padding: 12, resize: 'none' }}
-            placeholder="Add delivery or batch instructions..." value={notes} onChange={(e) => setNotes(e.target.value)} />
+
+        {/* Row 5: Notes & Supplier Invoice / Quote */}
+        <div className="restock-form-grid">
+          <div className="restock-form-field">
+            <label htmlFor="restock-notes" className="restock-label">
+              Notes (Optional)
+            </label>
+            <textarea
+              className="restock-textarea"
+              id="restock-notes"
+              placeholder="Delivery instructions or batch details..."
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+            />
+          </div>
+
+          <div className="restock-form-field">
+            <label className="restock-label">
+              Supplier Invoice / Quote (Optional)
+            </label>
+            <label className="restock-file-zone" htmlFor="restock-invoice-input">
+              <input
+                type="file"
+                id="restock-invoice-input"
+                style={{ display: 'none' }}
+                accept="application/pdf,image/png,image/jpeg,image/webp"
+                onChange={(e) => setInvoiceFile(e.target.files?.[0] || null)}
+              />
+              <span className="restock-file-btn">
+                <svg
+                  width="13"
+                  height="13"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  aria-hidden="true"
+                >
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                  <polyline points="17 8 12 3 7 8" />
+                  <line x1="12" y1="3" x2="12" y2="15" />
+                </svg>
+                {invoiceFile ? 'Change' : 'Browse'}
+              </span>
+              <span className="restock-file-info" title={invoiceFile ? invoiceFile.name : 'PDF, PNG, JPG (max 10MB)'}>
+                {invoiceFile ? invoiceFile.name : 'Attach file'}
+              </span>
+              {invoiceFile ? (
+                <button
+                  type="button"
+                  className="restock-file-clear"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    setInvoiceFile(null);
+                    setInvoiceStatus('');
+                  }}
+                  title="Remove file"
+                  aria-label="Remove file"
+                >
+                  <svg
+                    width="12"
+                    height="12"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    aria-hidden="true"
+                  >
+                    <line x1="18" y1="6" x2="6" y2="18" />
+                    <line x1="6" y1="6" x2="18" y2="18" />
+                  </svg>
+                </button>
+              ) : null}
+            </label>
+            <div id="restock-invoice-status" style={{ fontSize: 11.5, color: '#64748b', minHeight: 16 }}>
+              {invoiceStatus}
+            </div>
+          </div>
         </div>
-        <div>
-          <label style={{ display: 'block', fontSize: 14, fontWeight: 500, marginBottom: 8 }}>Supplier Invoice / Quote (Optional)</label>
-          <input type="file" className="input" id="restock-invoice-input" accept="application/pdf,image/png,image/jpeg,image/webp" style={{ padding: 8 }}
-            onChange={(e) => setInvoiceFile(e.target.files?.[0] || null)} />
-          <div id="restock-invoice-status" style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 6 }}>{invoiceStatus}</div>
-        </div>
-        <div id="restock-form-error" style={{ display: error ? 'block' : 'none', fontSize: 12, color: 'var(--error)', fontWeight: 500 }}>{error}</div>
+
+        {/* Error message */}
+        {error ? (
+          <div id="restock-form-error" className="restock-error-banner">
+            <svg
+              width="15"
+              height="15"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden="true"
+            >
+              <circle cx="12" cy="12" r="10" />
+              <line x1="12" y1="8" x2="12" y2="12" />
+              <line x1="12" y1="16" x2="12.01" y2="16" />
+            </svg>
+            <span>{error}</span>
+          </div>
+        ) : null}
       </div>
     </DialogShell>
   );

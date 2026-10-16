@@ -137,7 +137,7 @@ function LoadedLedger({ ctx, row, servicesById, addService, setAddService, addQt
             </span>
           </h2>
           <p style={{ margin: '4px 0 0 0', fontSize: '13px', color: 'var(--color-muted-fg)' }}>
-            User ID: #{String(row.patient.patient_id || row.admission.patient_id || '-')} &bull; UHID:{' '}
+            User ID: #{String(row.patient.patient_id || '-')} &bull; UHID:{' '}
             <span className="uhid-badge">{row.patient.uhid || '-'}</span>
           </p>
         </div>

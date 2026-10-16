@@ -29,11 +29,13 @@ function findAllLedgers() {
 }
 
 function findLedgerByAdmission(admission_id) {
-  return dataStore.ledgers.find((l) => l.admission_id === admission_id) || null;
+  const numId = Number(admission_id);
+  return dataStore.ledgers.find((l) => l.admission_id === numId) || null;
 }
 
 function findLedgerById(ledger_id) {
-  return dataStore.ledgers.find((l) => l.ledger_id === ledger_id) || null;
+  const numId = Number(ledger_id);
+  return dataStore.ledgers.find((l) => l.ledger_id === numId) || null;
 }
 
 function createLedger(ledger) {
@@ -54,11 +56,11 @@ function createLedger(ledger) {
 
   const newLedger = {
     ledger_id:
-      maxId(dataStore.ledgers, 'ledger_id') + 1 || 801,
+      maxId(dataStore.ledgers, 'ledger_id', 801) + 1,
     admission_id: admissionId,
     status: ledger.status || 'OPEN',
-    organization_id: ledger.organization_id || admission.organization_id || null,
-    hospital_id: ledger.hospital_id || admission.hospital_id || null,
+    organization_id: ledger.organization_id ? Number(ledger.organization_id) : (admission.organization_id ? Number(admission.organization_id) : null),
+    hospital_id: ledger.hospital_id ? Number(ledger.hospital_id) : (admission.hospital_id ? Number(admission.hospital_id) : null),
     created_at: new Date().toISOString(),
   };
   dataStore.ledgers.push(newLedger);
@@ -69,11 +71,13 @@ function createLedger(ledger) {
 // existing entries + 1), NOT a global max. This is intentional original
 // behavior, preserved as-is.
 function findLedgerEntries(ledger_id) {
-  return dataStore.ledgerEntries.filter((e) => e.ledger_id === ledger_id);
+  const numId = Number(ledger_id);
+  return dataStore.ledgerEntries.filter((e) => Number(e.ledger_id) === numId);
 }
 
 function addLedgerEntry(entry) {
-  const ledger = dataStore.ledgers.find((l) => l.ledger_id === entry.ledger_id);
+  const ledgerId = Number(entry.ledger_id);
+  const ledger = dataStore.ledgers.find((l) => l.ledger_id === ledgerId);
   if (!ledger) {
     const err = new Error(`Ledger #${entry.ledger_id} not found`);
     err.statusCode = 404;
@@ -89,18 +93,19 @@ function addLedgerEntry(entry) {
   const unit_price = Number(entry.unit_price) || 0;
   const amount = Number(entry.amount) || unit_price * quantity;
 
+  const existingEntries = dataStore.ledgerEntries.filter((e) => Number(e.ledger_id) === ledgerId);
+  const nextEntryId = existingEntries.reduce((max, e) => Math.max(max, Number(e.entry_id) || 0), 0) + 1;
+
   const newEntry = {
-    entry_id:
-      dataStore.ledgerEntries.filter((e) => e.ledger_id === entry.ledger_id)
-        .length + 1,
-    ledger_id: Number(entry.ledger_id),
+    entry_id: nextEntryId,
+    ledger_id: ledgerId,
     service_id: Number(entry.service_id),
     quantity,
     unit_price,
     amount,
     entry_time: entry.entry_time || new Date().toISOString(),
-    organization_id: entry.organization_id || ledger.organization_id || null,
-    hospital_id: entry.hospital_id || ledger.hospital_id || null,
+    organization_id: entry.organization_id ? Number(entry.organization_id) : (ledger.organization_id ? Number(ledger.organization_id) : null),
+    hospital_id: entry.hospital_id ? Number(entry.hospital_id) : (ledger.hospital_id ? Number(ledger.hospital_id) : null),
   };
   dataStore.ledgerEntries.push(newEntry);
   return newEntry;
@@ -127,15 +132,19 @@ function createPayment(payment) {
     }
   }
 
+  const modeMap = { cash: 'Cash', card: 'Card', upi: 'UPI', cheque: 'Card', bank: 'Card' };
+  const rawMode = String(payment.payment_mode || 'Cash').trim();
+  const normalizedMode = modeMap[rawMode.toLowerCase()] || (rawMode.charAt(0).toUpperCase() + rawMode.slice(1).toLowerCase());
+
   const newPayment = {
     payment_id:
-      maxId(dataStore.payments, 'payment_id') + 1 || 901,
+      maxId(dataStore.payments, 'payment_id', 901) + 1,
     ledger_id: ledgerId,
     amount_paid: Number(payment.amount_paid),
-    payment_mode: payment.payment_mode || 'CASH',
+    payment_mode: normalizedMode,
     payment_time: new Date().toISOString(),
-    organization_id: payment.organization_id || ledger.organization_id || null,
-    hospital_id: payment.hospital_id || ledger.hospital_id || null,
+    organization_id: payment.organization_id ? Number(payment.organization_id) : (ledger.organization_id ? Number(ledger.organization_id) : null),
+    hospital_id: payment.hospital_id ? Number(payment.hospital_id) : (ledger.hospital_id ? Number(ledger.hospital_id) : null),
   };
   dataStore.payments.push(newPayment);
 
@@ -154,15 +163,15 @@ function createPayment(payment) {
   // Generate receipt for this payment transaction
   const newReceipt = {
     receipt_id:
-      maxId(dataStore.receipts, 'receipt_id') + 1 || 1,
+      maxId(dataStore.receipts, 'receipt_id', 1) + 1,
     payment_id: newPayment.payment_id,
     ledger_id: ledger.ledger_id,
     admission_id: admission ? admission.admission_id : null,
     patient_id: admission ? admission.patient_id : null,
     amount: newPayment.amount_paid,
     payment_mode: newPayment.payment_mode,
-    organization_id: newPayment.organization_id || null,
-    hospital_id: newPayment.hospital_id || null,
+    organization_id: newPayment.organization_id ? Number(newPayment.organization_id) : null,
+    hospital_id: newPayment.hospital_id ? Number(newPayment.hospital_id) : null,
     generated_at: new Date().toISOString(),
   };
   dataStore.receipts.push(newReceipt);
@@ -207,7 +216,8 @@ function createPayment(payment) {
 // tables above rather than new parallel billing structures. ---
 
 function dispatchLedger(ledger_id) {
-  const ledger = dataStore.ledgers.find((l) => l.ledger_id === ledger_id);
+  const numId = Number(ledger_id);
+  const ledger = dataStore.ledgers.find((l) => Number(l.ledger_id) === numId);
   if (!ledger) return null;
   ledger.status = 'DISPATCHED';
   ledger.dispatched_at = new Date().toISOString();
@@ -272,8 +282,9 @@ function refreshFinalAmount(summary) {
 }
 
 function findDischargeSummaryByAdmission(admission_id) {
+  const numId = Number(admission_id);
   const summary =
-    dataStore.dischargeSummaries.find((s) => s.admission_id === admission_id) ||
+    dataStore.dischargeSummaries.find((s) => Number(s.admission_id) === numId) ||
     null;
   return summary ? refreshFinalAmount(summary) : null;
 }
@@ -303,15 +314,15 @@ function createDischargeSummary(summary) {
 
   const newSummary = {
     summary_id:
-      maxId(dataStore.dischargeSummaries, 'summary_id') + 1 || 1,
+      maxId(dataStore.dischargeSummaries, 'summary_id', 1) + 1,
     admission_id: admissionId,
     patient_id: Number(summary.patient_id) || admission.patient_id,
     discharge_notes: summary.discharge_notes || 'Fit for discharge',
     insurance_deduction: Math.min(Math.max(requestedDeduction || 0, 0), gross),
     final_amount: 0,
     generated_at: new Date().toISOString(),
-    organization_id: summary.organization_id || admission.organization_id || null,
-    hospital_id: summary.hospital_id || admission.hospital_id || null,
+    organization_id: summary.organization_id ? Number(summary.organization_id) : (admission.organization_id ? Number(admission.organization_id) : null),
+    hospital_id: summary.hospital_id ? Number(summary.hospital_id) : (admission.hospital_id ? Number(admission.hospital_id) : null),
   };
   refreshFinalAmount(newSummary);
   dataStore.dischargeSummaries.push(newSummary);
@@ -326,7 +337,8 @@ function findAllLeaders() {
 
 function findLeaderById(leader_id) {
   if (!dataStore.leaders) dataStore.leaders = [];
-  return dataStore.leaders.find((l) => l.leader_id === leader_id) || null;
+  const numId = Number(leader_id);
+  return dataStore.leaders.find((l) => Number(l.leader_id) === numId) || null;
 }
 
 function createLeader(payload) {
@@ -356,7 +368,7 @@ function createLeader(payload) {
 
   const newLeader = {
     leader_id:
-      maxId(dataStore.leaders, 'leader_id') + 1 || 1,
+      maxId(dataStore.leaders, 'leader_id', 1) + 1,
     admission_id: admissionId,
     patient_id: payload.patient_id ? Number(payload.patient_id) : admission.patient_id,
     service_id: serviceId,
@@ -366,8 +378,8 @@ function createLeader(payload) {
     status: 'PENDING',
     created_at: new Date().toISOString(),
     approved_at: null,
-    organization_id: payload.organization_id || admission.organization_id || null,
-    hospital_id: payload.hospital_id || admission.hospital_id || null,
+    organization_id: payload.organization_id ? Number(payload.organization_id) : (admission.organization_id ? Number(admission.organization_id) : null),
+    hospital_id: payload.hospital_id ? Number(payload.hospital_id) : (admission.hospital_id ? Number(admission.hospital_id) : null),
   };
 
   dataStore.leaders.push(newLeader);

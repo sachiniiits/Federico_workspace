@@ -22,6 +22,21 @@ import { isReservedStaffEmail } from '../../lib/emailIdentity.js';
  */
 const showToast = (message, type = 'info') => toast(message, type === 'warn' ? 'warning' : type);
 
+function normalizeToIsoDate(str) {
+  if (!str) return '';
+  const trimmed = String(str).trim();
+  const parts = trimmed.split(/[/.-]/);
+  if (parts.length === 3) {
+    if (parts[0].length === 2 && parts[2].length === 4) {
+      return `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
+    }
+    if (parts[0].length === 4) {
+      return `${parts[0]}-${parts[1].padStart(2, '0')}-${parts[2].padStart(2, '0')}`;
+    }
+  }
+  return trimmed;
+}
+
 export default function SignupPage() {
   usePageStyles(signupPageCss);
   useDocumentTitle('Federico Signup');
@@ -146,8 +161,8 @@ export default function SignupPage() {
             policy_number: f.policyNumber,
             member_id: f.memberId,
             coverage_type: f.coverage || 'Individual',
-            valid_from: f.validFrom,
-            valid_to: f.validTo,
+            valid_from: normalizeToIsoDate(f.validFrom),
+            valid_to: normalizeToIsoDate(f.validTo),
           });
         } catch (insuranceErr) {
           console.warn('[Signup] Insurance could not be saved, continuing:', insuranceErr);
@@ -322,11 +337,11 @@ export default function SignupPage() {
               <div className="grid-two">
                 <div className="form-group">
                   <label htmlFor="valid-from">Valid From</label>
-                  <input id="valid-from" type="text" placeholder="DD/MM/YYYY" value={f.validFrom} onChange={set('validFrom')} />
+                  <input id="valid-from" type="date" value={f.validFrom} onChange={set('validFrom')} />
                 </div>
                 <div className="form-group">
                   <label htmlFor="valid-to">Valid To (Expiry)</label>
-                  <input id="valid-to" type="text" placeholder="DD/MM/YYYY" value={f.validTo} onChange={set('validTo')} />
+                  <input id="valid-to" type="date" value={f.validTo} onChange={set('validTo')} />
                 </div>
               </div>
 

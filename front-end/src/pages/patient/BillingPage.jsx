@@ -23,7 +23,7 @@ const TABS = [
 ];
 
 function EmptySection({ message }) {
-  return <EmptyState icon="📄" title={message} />;
+  return <EmptyState icon={null} title={message} />;
 }
 
 export default function BillingPage() {
@@ -31,6 +31,7 @@ export default function BillingPage() {
   useDocumentTitle('My Bills & Receipts – Federico Hospital Portal');
   const { profile, bills, visits, billingSections, getBillingDocumentByRef, payBill } =
     usePatientStore();
+  const ins = profile?.insurance;
 
   const [activeTab, setActiveTab] = useState('invoices');
   const [detailBill, setDetailBill] = useState(null);
@@ -140,39 +141,49 @@ export default function BillingPage() {
           />
         </section>
 
-        {/*
-          DEFECT D4, preserved: renderInsuranceBanner() tests `ins.hasInsurance`,
-          a key patient-store.js#buildProfile never writes. The banner therefore
-          always renders the Self Pay branch, even for a fully insured patient.
-        */}
+        {/* Dynamic Insurance Banner */}
         <div className="insurance-banner" id="insurance-banner">
           <div className="ins-left">
             <span
               className="ins-badge"
               id="ins-status-badge"
-              style={{ background: 'var(--md-surface-container-low)', color: 'var(--muted)' }}
+              style={
+                ins?.hasInsurance
+                  ? undefined
+                  : { background: 'var(--md-surface-container-low)', color: 'var(--muted)' }
+              }
             >
-              Self Pay
+              {ins?.hasInsurance ? (ins.verified ? 'Verified Active' : 'Active Policy') : 'Self Pay'}
             </span>
             <div>
-              <strong id="ins-provider-name">Self Pay (No Active Insurance)</strong>
+              <strong id="ins-provider-name">
+                {ins?.hasInsurance ? ins.provider : 'Self Pay (No Active Insurance)'}
+              </strong>
               <p id="ins-policy-meta">
-                Add your health insurance policy in My Profile for instant cashless claims.
+                {ins?.hasInsurance
+                  ? `Policy #${ins.policyNumber || 'N/A'}${ins.memberId ? ` · Member ID: ${ins.memberId}` : ''}`
+                  : 'Add your health insurance policy in My Profile for instant cashless claims.'}
               </p>
             </div>
           </div>
           <div className="ins-breakdown">
             <div className="ins-item">
               <span>Coverage Type</span>
-              <strong id="ins-coverage-type">Self Sponsored</strong>
+              <strong id="ins-coverage-type">
+                {ins?.hasInsurance ? `${ins.coverageType} Coverage` : 'Self Sponsored'}
+              </strong>
             </div>
             <div className="ins-item">
               <span>Coverage Limit</span>
-              <strong id="ins-coverage-limit">₹0</strong>
+              <strong id="ins-coverage-limit">
+                {ins?.hasInsurance ? `₹${Number(ins.coverage || 0).toLocaleString('en-IN')}` : '₹0'}
+              </strong>
             </div>
             <div className="ins-item">
               <span>Valid Till</span>
-              <strong id="ins-valid-till">N/A</strong>
+              <strong id="ins-valid-till">
+                {ins?.hasInsurance ? (ins.validTo || 'N/A') : 'N/A'}
+              </strong>
             </div>
           </div>
         </div>

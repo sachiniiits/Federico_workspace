@@ -135,6 +135,8 @@ async function ensureDischargeSummary(ctx, admissionId) {
     patient_id: row.patient.patient_id,
     discharge_notes:
       'Patient treated and stabilized for the condition requiring admission; fit for discharge.',
+    gross_amount: grossTotal,
+    insurance_deduction: deduction,
     final_amount: finalAmount,
   });
   return { row, summary };

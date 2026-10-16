@@ -33,13 +33,9 @@ export const MODULE_UNAVAILABLE_BODY =
  * Reads the richer `tenant.modules` map when present, falling back to the
  * legacy `enabled_modules` array.
  */
-export function hasModule(tenant, moduleCode) {
-  if (!tenant) return false;
-  const code = String(moduleCode || '').toUpperCase();
-  if (tenant.modules && typeof tenant.modules === 'object' && code in tenant.modules) {
-    return Boolean(tenant.modules[code]);
-  }
-  return Boolean(tenant.enabled_modules && tenant.enabled_modules.indexOf(code) !== -1);
+export function hasModule(tenant, _moduleCode) {
+  // In Federico's capacity and resource-based model, all standard modules are default and unlocked
+  return Boolean(tenant);
 }
 
 /** Units of a resource type the org bought (0 if none). */

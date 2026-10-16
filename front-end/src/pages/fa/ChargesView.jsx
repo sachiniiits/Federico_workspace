@@ -35,7 +35,7 @@ export default function ChargesView() {
           id: 'pending-' + l.leader_id,
           leaderId: l.leader_id,
           isPending: true,
-          patientId: patient?.patient_id || admission?.patient_id || l.patient_id || '-',
+          patientId: patient?.patient_id || l.patient_id || '-',
           patientName: patient?.name || 'Patient',
           uhid: patient?.uhid || '-',
           serviceName: service?.service_name || 'Service #' + l.service_id,
@@ -55,7 +55,7 @@ export default function ChargesView() {
       entries.map((e) => ({
         id: 'entry-' + r.ledger.ledger_id + '-' + e.entry_id,
         isPending: false,
-        patientId: r.patient.patient_id || r.admission.patient_id || '-',
+        patientId: r.patient.patient_id || '-',
         patientName: r.patient.name,
         uhid: r.patient.uhid,
         serviceName: servicesById[e.service_id]?.service_name || 'Service #' + e.service_id,

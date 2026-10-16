@@ -9,7 +9,6 @@ const {
   platformLoginRules,
   provisionOrganizationRules,
   createHospitalRules,
-  setModuleFlagRules,
   createApiKeyRules,
   createPlanRules,
   setSubscriptionRules,
@@ -76,15 +75,6 @@ router.post(
   ...gate,
   validateBody(createHospitalRules),
   controller.createHospital,
-);
-
-// Feature flags
-router.get('/organizations/:id/modules', ...gate, controller.findModuleFlags);
-router.put(
-  '/organizations/:id/modules/:moduleCode',
-  ...gate,
-  validateBody(setModuleFlagRules),
-  controller.setModuleFlag,
 );
 
 // Resource-level entitlements

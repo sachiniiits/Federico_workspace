@@ -23,7 +23,10 @@ export default function HomLayout() {
   usePageStyles(globalCss);
   const { session } = useSession();
   const hospitalName =
-    session?.tenant?.hospital_name || session?.tenant?.organization_name || 'City General Hospital';
+    session?.tenant?.hospital_name ||
+    session?.tenant?.organization_name ||
+    session?.orgName ||
+    'City General Hospital';
 
   return (
     <>

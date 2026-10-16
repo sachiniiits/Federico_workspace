@@ -166,7 +166,43 @@ function entitlements(req, res) {
 }
 
 function demoAccounts(req, res) {
+  if (process.env.NODE_ENV === 'production') {
+    return res.status(403).json({
+      message: 'Demo accounts endpoint is disabled in production environment',
+      error: 'Forbidden',
+      statusCode: 403,
+    });
+  }
   res.status(200).json(authService.getDemoAccounts());
+}
+
+function changePassword(req, res) {
+  try {
+    const { newPassword, currentPassword } = req.body;
+    if (!newPassword || typeof newPassword !== 'string' || newPassword.length < 6) {
+      return res.status(400).json({
+        message: 'New password must be at least 6 characters',
+        error: 'Bad Request',
+        statusCode: 400,
+      });
+    }
+    const userId = req.session && req.session.userId;
+    if (!userId) {
+      return res.status(401).json({
+        message: 'Authentication required',
+        error: 'Unauthorized',
+        statusCode: 401,
+      });
+    }
+    const result = authService.changePassword(userId, newPassword, currentPassword);
+    res.status(200).json(result);
+  } catch (err) {
+    res.status(err.status || 500).json({
+      message: err.message || 'Failed to update password',
+      error: err.name || 'Error',
+      statusCode: err.status || 500,
+    });
+  }
 }
 
 module.exports = {
@@ -177,4 +213,5 @@ module.exports = {
   logout,
   entitlements,
   demoAccounts,
+  changePassword,
 };

@@ -18,7 +18,8 @@ function findAll(predicate = null) {
 }
 
 function findOne(id) {
-  return dataStore.appointments.find((a) => a.appointment_id === id) || null;
+  const numId = Number(id);
+  return dataStore.appointments.find((a) => a.appointment_id === numId) || null;
 }
 
 function create(appointment) {
@@ -49,18 +50,40 @@ function create(appointment) {
     }
   }
 
+  const patient = dataStore.patients.find((p) => p.patient_id === patientId);
+  const orgId = appointment.organization_id ? Number(appointment.organization_id) : (patient ? patient.organization_id : null);
+  const fallbackUser = orgId ? (dataStore.users.find((u) => u.organization_id === orgId)?.user_id || 101) : 101;
+  const createdBy = appointment.created_by
+    ? Number(appointment.created_by)
+    : patient && patient.user_id
+      ? Number(patient.user_id)
+      : fallbackUser;
+
+  let scheduledDatetime = null;
+  if (appointment.scheduled_datetime) {
+    const parsed = new Date(appointment.scheduled_datetime);
+    scheduledDatetime = !isNaN(parsed.getTime()) ? parsed.toISOString() : appointment.scheduled_datetime;
+  } else if (appointment.appointment_date) {
+    const timeStr = appointment.appointment_time || '09:00:00';
+    const parsed = new Date(`${appointment.appointment_date} ${timeStr}`);
+    scheduledDatetime = !isNaN(parsed.getTime()) ? parsed.toISOString() : `${appointment.appointment_date}T09:00:00.000Z`;
+  }
+
   const newAppointment = {
     appointment_id:
-      maxId(dataStore.appointments, 'appointment_id') + 1 || 601,
+      maxId(dataStore.appointments, 'appointment_id', 601) + 1,
     created_at: new Date().toISOString(),
     patient_id: patientId,
     doctor_id: appointment.doctor_id ? Number(appointment.doctor_id) : null,
-    appointment_date: appointment.appointment_date,
-    appointment_time: appointment.appointment_time || null,
-    scheduled_datetime: appointment.scheduled_datetime || (appointment.appointment_date ? `${appointment.appointment_date}T${appointment.appointment_time || '09:00:00'}` : null),
+    availability_id: appointment.availability_id ? Number(appointment.availability_id) : null,
+    appointment_date: appointment.appointment_date || (scheduledDatetime ? scheduledDatetime.slice(0, 10) : null),
+    appointment_time: appointment.appointment_time || (scheduledDatetime ? scheduledDatetime.slice(11, 16) : null),
+    scheduled_datetime: scheduledDatetime,
     department: appointment.department || 'General',
-    status: appointment.status || 'SCHEDULED',
-    organization_id: appointment.organization_id ? Number(appointment.organization_id) : null,
+    visit_type: appointment.visit_type || 'Consultation',
+    status: appointment.status || 'CONFIRMED',
+    created_by: createdBy,
+    organization_id: orgId,
     hospital_id: appointment.hospital_id ? Number(appointment.hospital_id) : null,
   };
   dataStore.appointments.push(newAppointment);
@@ -68,12 +91,13 @@ function create(appointment) {
 }
 
 function update(id, patch) {
-  const appointment = findOne(id);
+  const numId = Number(id);
+  const appointment = findOne(numId);
   if (!appointment) return null;
   Object.assign(appointment, patch);
 
   // If there's an associated preRequest, sync requested_date and requested_time as well!
-  const preRequest = dataStore.preRequests.find((pr) => pr.appointment_id === id);
+  const preRequest = dataStore.preRequests.find((pr) => Number(pr.appointment_id) === numId);
   if (preRequest) {
     if (patch.scheduled_datetime) {
       const parts = String(patch.scheduled_datetime).split('T');

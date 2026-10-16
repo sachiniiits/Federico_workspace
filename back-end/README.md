@@ -24,12 +24,16 @@ npm start
 
 # Development mode (auto-reload via nodemon)
 npm run start:dev
+
+# Reset database to canonical default mock data anytime
+npm run db:reset
 ```
 
 * **API Server:** `http://localhost:3000`
 * **Health Check:** `http://localhost:3000/health`
 * **Interactive Swagger UI:** `http://localhost:3000/api`
 * **Public File Uploads:** `http://localhost:3000/uploads/:category/:filename`
+* **Database Reset:** `npm run db:reset` (restores `data/db.json` from `src/store/dataStore.js`, prunes temporary uploads, and reloads server)
 
 ---
 

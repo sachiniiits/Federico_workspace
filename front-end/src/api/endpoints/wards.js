@@ -53,24 +53,5 @@ export const wards = {
       return request('PUT', '/ward/bed-requests/' + requestId, { status: 'DENIED' });
     },
   },
-
-  /**
-   * DEFECT D2, carried forward unchanged per the migration plan's constraint 1:
-   * these three point at /ward/emergencies, but the backend serves
-   * /ward/emergency (back-end/src/routes/ward.routes.js). All three would 404.
-   * No caller exists anywhere in the app - this is dead, wrong surface that the
-   * legacy client also shipped.
-   */
-  emergencies: {
-    list() {
-      return request('GET', '/ward/emergencies');
-    },
-    create(payload) {
-      return request('POST', '/ward/emergencies', payload);
-    },
-    update(id, patch) {
-      return request('PUT', '/ward/emergencies/' + id, patch);
-    },
-  },
 };
 

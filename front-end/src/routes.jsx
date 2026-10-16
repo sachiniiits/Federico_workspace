@@ -136,7 +136,8 @@ const router = createBrowserRouter([
           { path: '/PRE/pages/PRE.html', element: L(<PreDashboardPage />) },
           { path: '/PRE/pages/request.html', element: L(<PreRequestsPage />) },
           { path: '/PRE/pages/admitted.html', element: L(<PreAdmittedPage />) },
-          { path: '/PRE/pages/hom.html', element: L(<PreHomCoordinationPage />) },
+          { path: '/PRE/pages/bed-coordination.html', element: L(<PreHomCoordinationPage />) },
+          { path: '/PRE/pages/hom.html', element: <Navigate to="/PRE/pages/bed-coordination.html" replace /> },
           { path: '/PRE/pages/discharge.html', element: L(<PreDischargePage />) },
           { path: '/PRE/pages/rejected.html', element: L(<PreRejectedPage />) },
           { path: '/PRE/pages/patient-records.html', element: L(<PrePatientRecordsPage />) },
@@ -164,6 +165,8 @@ const router = createBrowserRouter([
       },
 
       // ---- FA (one page, six hash views - DEC-2) ----
+      { path: '/FA', element: <Navigate to="/FA/fa-dashboard.html" replace /> },
+      { path: '/FA/index.html', element: <Navigate to="/FA/fa-dashboard.html" replace /> },
       { path: '/FA/fa-dashboard.html', element: guarded('FA', <FaLayout />) },
 
       // ---- Admin ----

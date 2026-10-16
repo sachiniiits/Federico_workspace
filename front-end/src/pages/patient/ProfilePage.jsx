@@ -169,16 +169,25 @@ export default function ProfilePage() {
       if (section === 'password') {
         const nextPassword = values['new-password'] || '';
         const confirmPassword = values['confirm-password'] || '';
+        const currentPassword = values['current-password'] || '';
         if (!nextPassword || nextPassword !== confirmPassword) {
           setPasswordHint({ text: 'Passwords do not match.', variant: 'no-match' });
           return;
         }
-        // DEFECT D11, preserved: password change has no backend endpoint, so
-        // this reports success without calling anything.
-        setPasswordHint({ text: 'Password updated successfully.', variant: 'match' });
-        commitSnapshot('password');
-        setEditing(null);
-        toast('Password updated.', 'success');
+        if (nextPassword.length < 6) {
+          setPasswordHint({ text: 'Password must be at least 6 characters.', variant: 'no-match' });
+          return;
+        }
+        try {
+          await api.auth.changePassword(nextPassword, currentPassword);
+          setPasswordHint({ text: 'Password updated successfully.', variant: 'match' });
+          commitSnapshot('password');
+          setEditing(null);
+          toast('Password updated.', 'success');
+        } catch (err) {
+          setPasswordHint({ text: err?.message || 'Failed to update password.', variant: 'no-match' });
+          toast(err?.message || 'Failed to update password.', 'warning');
+        }
         return;
       }
 

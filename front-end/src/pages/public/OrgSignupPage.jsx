@@ -30,18 +30,6 @@ const DEFAULT_RATES = {
   PATIENT_ADMISSIONS: 10,
 };
 
-const ALL_MODULES = [
-  'APPOINTMENTS',
-  'ADMISSIONS',
-  'INVENTORY',
-  'BILLING',
-  'INSURANCE',
-  'ANALYTICS',
-  'DOCTOR',
-  'PATIENT',
-  'LEADERSHIP',
-];
-
 /**
  * Ported from signup/org-signup.html + org-signup.js.
  *
@@ -116,8 +104,8 @@ export default function OrgSignupPage() {
       .get()
       .then((data) => {
         if (data && data.rates) {
-          // D3: the response field is base_platform_fee, not base_fee.
-          if (typeof data.base_fee === 'number') setBaseFee(data.base_fee);
+          const fee = data.base_platform_fee ?? data.base_fee;
+          if (typeof fee === 'number') setBaseFee(fee);
           setRates((prev) => ({ ...prev, ...data.rates }));
         }
       })
@@ -189,9 +177,7 @@ export default function OrgSignupPage() {
       address: org.address.trim(),
       specialties,
       emergency_available: org.emergency,
-      plan_id: 1,
-      modules: ALL_MODULES,
-      module_instances: ALL_MODULES.reduce((acc, code) => ({ ...acc, [code]: 1 }), {}),
+      plan_id: org.plan_id ? Number(org.plan_id) : 1,
       module_resources: {
         ADMISSIONS: {
           GENERAL_BEDS: res.generalBeds,

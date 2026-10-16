@@ -1,5 +1,6 @@
 'use strict';
 
+import { useState } from 'react';
 import { api } from '../../api/index.js';
 import { useApi } from '../../hooks/useApi.js';
 import PageHeader from '../../components/layout/PageHeader.jsx';
@@ -84,10 +85,15 @@ export default function SettlementSection({ ctx, row }) {
 }
 
 function Settlement({ ctx, row, entries, insurance }) {
-  // Read live at click time by the payment / summary actions (see D7 below).
+  // Read live at click time by the payment / summary actions.
   const { coverageOverrideRef } = ctx;
   const grossTotal = ledgerTotal(entries);
   const coverageLimit = insurance ? Math.min(Number(insurance.coverage_limit || 0), grossTotal) : 0;
+  const [userOverride, setUserOverride] = useState(null);
+  const overrideDeduction = userOverride !== null ? userOverride : coverageLimit;
+
+  const effectiveDeduction = Math.min(Math.max(0, overrideDeduction), grossTotal);
+  const netPayable = Math.max(0, grossTotal - effectiveDeduction);
   const dispatched = Boolean(row.ledger) && row.ledger.status === 'DISPATCHED';
 
   const isOpdDischarge = row.admission.visit_type === 'OPD';
@@ -139,17 +145,15 @@ function Settlement({ ctx, row, entries, insurance }) {
           </div>
           <div className="md-field" style={{ margin: '12px 0 0' }}>
             <label>Override Deduction (Rs)</label>
-            {/*
-              DEFECT D7, preserved: nothing listens to this field, so
-              #net-payable-preview below never updates as you type. The value is
-              still read at click time by Record Cash Payment and by the
-              discharge-summary generator, which is why it is uncontrolled.
-            */}
             <input
               type="number"
               id="coverage-override"
               ref={coverageOverrideRef}
-              defaultValue={coverageLimit}
+              value={overrideDeduction}
+              onChange={(e) => {
+                const val = e.target.value === '' ? 0 : Number(e.target.value);
+                setUserOverride(val);
+              }}
               min="0"
               max={grossTotal}
             />
@@ -166,7 +170,7 @@ function Settlement({ ctx, row, entries, insurance }) {
             }}
           >
             <span>Net Payable</span>
-            <span id="net-payable-preview">{formatCurrency(Math.max(0, grossTotal - coverageLimit))}</span>
+            <span id="net-payable-preview">{formatCurrency(netPayable)}</span>
           </div>
           <button
             className="btn-primary"

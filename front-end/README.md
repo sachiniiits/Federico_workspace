@@ -100,7 +100,7 @@ working.
 | `/PRE/pages/doctor.html` | Doctor roster |
 | `/PRE/pages/appointment.html` | OPD booking (`?patient_id=`, `?doctor_id=`) |
 | `/PRE/pages/APPointment.html` | Alias of the above — the file on disk used this casing while every link used the lowercase form |
-| `/PRE/pages/hom.html` | PRE → HOM bed requests and discharges |
+| `/PRE/pages/bed-coordination.html` | Bed allocation and operations coordination (legacy `/PRE/pages/hom.html` redirects here) |
 
 ### Patient
 

@@ -342,7 +342,7 @@ export default function DashboardPage() {
               <div id="patient-documents-list" className="hom-documents-wrap">
                 <div className="doc-group">
                   <div className="doc-group-header">
-                    <span className="doc-group-title">🧾 Receipts</span>
+                    <span className="doc-group-title">Receipts</span>
                   </div>
                   <DocumentGroup
                     containerId="documents-receipts"
@@ -355,7 +355,7 @@ export default function DashboardPage() {
 
                 <div className="doc-group">
                   <div className="doc-group-header">
-                    <span className="doc-group-title">📋 Discharge Summary</span>
+                    <span className="doc-group-title">Discharge Summary</span>
                   </div>
                   <DocumentGroup
                     containerId="documents-discharge"
@@ -368,7 +368,7 @@ export default function DashboardPage() {
 
                 <div className="doc-group">
                   <div className="doc-group-header">
-                    <span className="doc-group-title">📑 EOD Bills</span>
+                    <span className="doc-group-title">EOD Bills</span>
                   </div>
                   <DocumentGroup
                     containerId="documents-eod"

@@ -28,5 +28,8 @@ export const doctors = {
   createAvailability(payload) {
     return request('POST', '/doctor/availability', payload);
   },
+  removeAvailability(id) {
+    return request('DELETE', '/doctor/availability/' + id);
+  },
 };
 

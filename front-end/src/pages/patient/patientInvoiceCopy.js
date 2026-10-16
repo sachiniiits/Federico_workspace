@@ -6,7 +6,9 @@ import { openPrintWindow } from '../../lib/printDocument.js';
 /** patient-billing.js#openInvoiceDigitalCopy, byte-identical. */
 export function openInvoiceDigitalCopy(bill, profile) {
   const patientName = profile?.name || 'Patient';
-  const uhid = profile?.uhid || `FED-${profile?.patientId || '201'}`;
+  const uhid = profile?.uhid || (profile?.patientId ? `FED-${profile.patientId}` : 'UHID-882100');
+  const hospitalName = profile?.hospitalName || profile?.orgName || 'City General Hospital';
+  const supportPhone = profile?.supportPhone || '+91 1800-456-7890';
   const dateStr =
     bill.date || new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
 
@@ -52,7 +54,7 @@ export function openInvoiceDigitalCopy(bill, profile) {
       <body>
         <div class="header">
           <div class="brand">
-            <h1>FEDERICO HOSPITALS</h1>
+            <h1>${escapeHtml(hospitalName.toUpperCase())}</h1>
             <span>Healthcare Excellence · Certified Hospital Inpatient &amp; Outpatient Billing</span>
           </div>
           <span class="badge">${bill.status === 'paid' ? 'PAID IN FULL' : 'PENDING PAYMENT'}</span>
@@ -89,7 +91,7 @@ export function openInvoiceDigitalCopy(bill, profile) {
         </div>
         <div class="footer">
           <p>This is a computer-generated tax invoice and receipt. No physical signature is required.</p>
-          <p>Federico Hospital Network · ISO 9001:2015 Certified · 24x7 Support: +91 1800-456-7890</p>
+          <p>${escapeHtml(hospitalName)} Network · ISO 9001:2015 Certified · 24x7 Support: ${escapeHtml(supportPhone)}</p>
         </div>
         <button class="print-btn" onclick="window.print()">Print / Download PDF</button>
       </body>
@@ -112,11 +114,11 @@ export function openBillingDigitalCopy(record, context, profile) {
       record.ts ||
       Date.now(),
   ).toLocaleString('en-IN');
-  const patientName = record.patient || record.patient_name || profile?.name || 'Patient';
-  const patientId = record.patient_id || record.admission_id || record.uhid || 'N/A';
-  const paymentMode = record.mode || record.payment_mode || 'UPI';
-  const gross = Number(record.gross || record.amount || 0);
-  const coverage = Number(record.coverage || record.insurance_deduction || 0);
+  const patientName = record.patient_name || profile?.name || 'Patient';
+  const patientId = record.patient_id || record.uhid || 'N/A';
+  const paymentMode = record.payment_mode || 'UPI';
+  const gross = Number(record.gross_amount || record.amount || 0);
+  const coverage = Number(record.insurance_deduction || 0);
   const amount = Number(record.amount || 0);
   const reference =
     record.receipt_link ||
@@ -127,6 +129,7 @@ export function openBillingDigitalCopy(record, context, profile) {
     record.reference ||
     `REC-${record.sourceId || Date.now()}`;
   const docStatus = record.status || 'CONFIRMED';
+  const hospitalName = profile?.hospitalName || profile?.orgName || record.hospital_name || 'City General Hospital';
 
   const html = `
       <!DOCTYPE html>
@@ -153,7 +156,7 @@ export function openBillingDigitalCopy(record, context, profile) {
       <body>
         <div class="header">
           <div>
-            <h2>FEDERICO HOSPITALS</h2>
+            <h2>${escapeHtml(hospitalName.toUpperCase())}</h2>
             <small style="color:#64748B;">Official Payment Receipt &amp; Voucher</small>
           </div>
           <span class="badge">${escapeHtml(String(docStatus).replace(/_/g, ' '))}</span>
@@ -169,7 +172,7 @@ export function openBillingDigitalCopy(record, context, profile) {
         <div class="row net"><span>Net Paid</span><span>₹${amount.toLocaleString('en-IN')}</span></div>
         <div class="row"><span>Transaction Reference</span><span>${escapeHtml(reference)}</span></div>
         <div class="footer">
-          <p>Federico Hospitals · Thank you for choosing our care network.</p>
+          <p>${escapeHtml(hospitalName)} · Thank you for choosing our care network.</p>
         </div>
         <button class="print-btn" onclick="window.print()">Print / Save PDF</button>
       </body>

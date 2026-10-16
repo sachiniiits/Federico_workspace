@@ -1,14 +1,23 @@
 'use strict';
 
+import { useState, useMemo } from 'react';
 import { api } from '../../api/index.js';
 import { useApi } from '../../hooks/useApi.js';
 import { useDocumentTitle } from '../../hooks/useDocumentTitle.js';
+import Badge from '../../components/ui/Badge.jsx';
+import EmptyState from '../../components/ui/EmptyState.jsx';
+import SearchToolbar from '../../components/ui/SearchToolbar.jsx';
+import PageHeader from '../../components/layout/PageHeader.jsx';
 
-/** PRE read-only coordination view for HOM bed assignment status. */
+/** PRE coordination view for inpatient bed assignment status. */
 export default function HomCoordinationPage() {
-  useDocumentTitle('HOM Coordination - Federico PRE');
+  useDocumentTitle('Bed Coordination - Federico PRE');
 
-  const { data } = useApi(async () => {
+  const [query, setQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState('');
+  const [wardFilter, setWardFilter] = useState('');
+
+  const { data, loading, error } = useApi(async () => {
     const [patients, bedRequests, wards, beds] = await Promise.all([
       api.patients.list().catch(() => []),
       api.wards.bedRequests.list().catch(() => []),
@@ -23,7 +32,7 @@ export default function HomCoordinationPage() {
     const bedsById = {};
     (beds || []).forEach((b) => (bedsById[b.bed_id] = b));
 
-    // Show PENDING + ALLOCATED + DENIED so PRE can see the full HOM response.
+    // Show PENDING + ALLOCATED + DENIED so PRE can see the full bed allocation response.
     const allBedRequests = (bedRequests || []).filter((r) =>
       r.status === 'PENDING' || r.status === 'ALLOCATED' || r.status === 'DENIED',
     );
@@ -33,24 +42,77 @@ export default function HomCoordinationPage() {
 
   const d = data || { allBedRequests: [], patientsById: {}, wardsById: {}, bedsById: {} };
 
-  const pill = (bg, border, color, weight, text) => (
-    <span style={{ display: 'inline-block', padding: '2px 8px', borderRadius: 12, border: '1px solid ' + border, background: bg, fontSize: 11, fontWeight: weight, color }}>{text}</span>
-  );
+  const wardOptions = useMemo(() => {
+    return Object.values(d.wardsById || {})
+      .map((w) => ({ value: String(w.ward_id), label: w.ward_name }))
+      .sort((a, b) => a.label.localeCompare(b.label));
+  }, [d.wardsById]);
+
+  const q = query.trim().toLowerCase();
+  const filteredRequests = d.allBedRequests.filter((r) => {
+    if (statusFilter && r.status !== statusFilter) return false;
+    if (wardFilter && String(r.ward_id) !== wardFilter) return false;
+    if (!q) return true;
+
+    const patient = d.patientsById[r.patient_id] || {};
+    const ward = d.wardsById[r.ward_id];
+    const wardName = ward?.ward_name || '';
+    const bed = d.bedsById[r.bed_id];
+    const bedNumber = bed?.bed_number || '';
+
+    return (
+      (patient.name && patient.name.toLowerCase().includes(q)) ||
+      (patient.uhid && patient.uhid.toLowerCase().includes(q)) ||
+      wardName.toLowerCase().includes(q) ||
+      bedNumber.toLowerCase().includes(q) ||
+      (r.priority && r.priority.toLowerCase().includes(q)) ||
+      (r.status && r.status.toLowerCase().includes(q))
+    );
+  });
 
   return (
-    <div className="container" style={{ margin: '24px 20px' }}>
-      <div className="directory-header">
-        <div className="directory-title-group">
-          <h2>Hospital Operations Management (HOM) Coordination</h2>
-          <p>Monitor bed allocation requests submitted from PRE. Discharge approvals are managed in the PRE Dashboard.</p>
-        </div>
-      </div>
+    <div className="container">
+      <PageHeader
+        title="Bed Allocation & Coordination"
+        subtitle="Monitor inpatient bed allocation requests submitted from PRE. Bed assignments are handled by Operations."
+      />
 
       <div>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
           <h3 style={{ margin: 0, fontSize: 16, fontWeight: 600 }}>Inpatient Bed Allocation Queue</h3>
-          <span style={{ fontSize: 12, color: 'var(--color-muted-fg)' }}>Bed assignment is handled in HOM</span>
+          <span style={{ fontSize: 12, color: 'var(--color-muted-fg)' }}>Bed assignment is handled by Operations</span>
         </div>
+        <SearchToolbar
+          searchQuery={query}
+          onSearchChange={setQuery}
+          placeholder="Search by patient name, UHID, bed, ward..."
+          filters={[
+            {
+              id: 'status',
+              value: statusFilter,
+              onChange: setStatusFilter,
+              options: [
+                { value: '', label: 'All Statuses' },
+                { value: 'PENDING', label: 'Pending' },
+                { value: 'ALLOCATED', label: 'Allocated' },
+                { value: 'DENIED', label: 'Rejected' },
+              ],
+            },
+            ...(wardOptions.length > 0
+              ? [
+                  {
+                    id: 'ward',
+                    value: wardFilter,
+                    onChange: setWardFilter,
+                    options: [
+                      { value: '', label: 'All Wards' },
+                      ...wardOptions,
+                    ],
+                  },
+                ]
+              : []),
+          ]}
+        />
         <div className="table-container" style={{ margin: 0 }}>
           <table>
             <thead>
@@ -64,17 +126,29 @@ export default function HomCoordinationPage() {
               </tr>
             </thead>
             <tbody id="homRequestTable">
-              {d.allBedRequests.length === 0 ? (
-                <tr><td colSpan="6" style={{ textAlign: 'center', padding: 28, color: 'var(--color-muted-fg)' }}>No bed allocation requests</td></tr>
+              {loading ? (
+                <tr><td colSpan="6" style={{ textAlign: 'center', padding: 24, color: 'var(--color-muted-fg)' }}>Loading bed allocation requests…</td></tr>
+              ) : error ? (
+                <EmptyState asTableRow colSpan={6} icon={null} title="Failed to load bed allocation requests" message={error.message} />
+              ) : d.allBedRequests.length === 0 ? (
+                <EmptyState asTableRow colSpan={6} icon={null} title="No bed allocation requests" />
+              ) : filteredRequests.length === 0 ? (
+                <EmptyState
+                  asTableRow
+                  colSpan={6}
+                  icon={null}
+                  title="No matching requests found"
+                  message="Try adjusting your search query or filters."
+                />
               ) : (
-                d.allBedRequests.map((r) => {
+                filteredRequests.map((r) => {
                   const patient = d.patientsById[r.patient_id] || {};
                   const wardName = r.ward_id ? d.wardsById[r.ward_id]?.ward_name || 'Ward Requested' : 'HOM Decides';
 
                   const priorityBadge =
-                    r.priority === 'CRITICAL' ? pill('#fef2f2', '#fecaca', '#991b1b', 700, 'Critical')
-                    : r.priority === 'HIGH'   ? pill('#fef3c7', '#fde68a', '#b45309', 700, 'High')
-                    : pill('#f8fafc', '#e2e8f0', '#475569', 600, 'Normal');
+                    r.priority === 'CRITICAL' ? <Badge variant="error">Critical</Badge>
+                    : r.priority === 'HIGH'   ? <Badge variant="warning">High</Badge>
+                    : <Badge variant="neutral">Normal</Badge>;
 
                   let bedCell = <span style={{ color: 'var(--color-muted-fg)', fontSize: 12 }}>—</span>;
                   if (r.status === 'ALLOCATED' && r.bed_id && d.bedsById[r.bed_id]) {
@@ -83,14 +157,10 @@ export default function HomCoordinationPage() {
                     bedCell = <span style={{ color: '#6b7280', fontStyle: 'italic' }}>N/A</span>;
                   }
 
-                  let statusBadge;
-                  if (r.status === 'ALLOCATED') {
-                    statusBadge = <span className="status confirmed" style={{ background: '#dcfce7', color: '#15803d', border: '1px solid #bbf7d0', fontSize: 11, padding: '3px 8px', borderRadius: 12 }}>Allocated</span>;
-                  } else if (r.status === 'DENIED') {
-                    statusBadge = <span className="status rejected" style={{ background: '#fef2f2', color: '#991b1b', border: '1px solid #fecaca', fontSize: 11, padding: '3px 8px', borderRadius: 12 }}>Rejected</span>;
-                  } else {
-                    statusBadge = <span className="status pending" style={{ background: '#fef3c7', color: '#b45309', border: '1px solid #fde68a', fontSize: 11, padding: '3px 8px', borderRadius: 12 }}>Pending</span>;
-                  }
+                  const statusBadge =
+                    r.status === 'ALLOCATED' ? <Badge variant="success">Allocated</Badge>
+                    : r.status === 'DENIED'  ? <Badge variant="error">Rejected</Badge>
+                    : <Badge variant="warning">Pending</Badge>;
 
                   return (
                     <tr key={r.bed_request_id}>

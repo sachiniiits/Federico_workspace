@@ -81,8 +81,14 @@ function mapPreRequestStatus(status) {
  */
 export function buildProfile(patient, user, insurance) {
   const nameParts = (patient.name || '').split(' ').filter(Boolean);
+  const hasPolicy = Boolean(
+    insurance &&
+      (insurance.policy_number || insurance.provider_name) &&
+      insurance.provider_name !== 'Self Pay',
+  );
   const ins = insurance
     ? {
+        hasInsurance: hasPolicy,
         verified: Boolean(insurance.coverage_limit),
         provider: insurance.provider_name || 'Self Pay',
         policyNumber: insurance.policy_number || '',
@@ -96,9 +102,18 @@ export function buildProfile(patient, user, insurance) {
         cardBackUrl: insurance.card_back_url || '',
       }
     : {
-        verified: false, provider: 'Self Pay', policyNumber: '', memberId: '', coverage: 0,
-        copayPercentage: 0, validFrom: '', validTo: '', coverageType: 'Self',
-        cardFrontUrl: '', cardBackUrl: '',
+        hasInsurance: false,
+        verified: false,
+        provider: 'Self Pay',
+        policyNumber: '',
+        memberId: '',
+        coverage: 0,
+        copayPercentage: 0,
+        validFrom: '',
+        validTo: '',
+        coverageType: 'Self',
+        cardFrontUrl: '',
+        cardBackUrl: '',
       };
 
   return {
@@ -107,7 +122,10 @@ export function buildProfile(patient, user, insurance) {
     name: patient.name,
     firstName: nameParts[0] || patient.name || 'Patient',
     initials: (nameParts.map((p) => p[0]).join('').slice(0, 2) || 'P').toUpperCase(),
-    uhid: patient.uhid,
+    uhid: patient.uhid || (patient.patient_id ? `FED-${patient.patient_id}` : 'UHID-882100'),
+    hospitalName: (user && (user.hospitalName || user.orgName)) || 'City General Hospital',
+    orgName: (user && user.orgName) || 'Federico Hospital',
+    supportPhone: (user && user.phone) || '+91 1800-456-7890',
     age: computeAge(patient.dob),
     gender: patient.gender || 'Unknown',
     bloodGroup: patient.blood_group || 'NA',
@@ -159,6 +177,7 @@ export function buildAppointments(preRequests = [], doctorsById = {}, rawAppoint
     items.push({
       id: 'APT-' + apt.appointment_id,
       appointmentId: apt.appointment_id,
+      doctorId: docId,
       date,
       displayDate: formatShortDate(date ? date + 'T00:00:00' : apt.created_at),
       time: formatTimeString(time),
@@ -183,6 +202,9 @@ export function buildAppointments(preRequests = [], doctorsById = {}, rawAppoint
         if (!existing.doctorName && pr.doctor_id && doctorsById[pr.doctor_id]) {
           existing.doctorName = doctorsById[pr.doctor_id].name;
         }
+        if (!existing.doctorId && pr.doctor_id) {
+          existing.doctorId = pr.doctor_id;
+        }
       }
       return;
     }
@@ -194,6 +216,7 @@ export function buildAppointments(preRequests = [], doctorsById = {}, rawAppoint
       id: 'PRE-' + pr.pre_request_id,
       preRequestId: pr.pre_request_id,
       appointmentId: pr.appointment_id || null,
+      doctorId: pr.doctor_id || null,
       date,
       displayDate: formatShortDate(date ? date + 'T00:00:00' : pr.created_at),
       time: formatTimeString(pr.requested_time || '10:00 AM'),
@@ -233,17 +256,17 @@ export function buildVisits(bundles, bedsById, preRequests) {
   const fromPreRequests = preRequests
     .filter(
       (pr) =>
-        ['ADMITTED', 'DISCHARGE_REQUESTED', 'EMERGENCY'].includes(String(pr.status || '').toUpperCase()) ||
-        pr.visit_type === 'Emergency',
+        ['ADMITTED', 'DISCHARGE_REQUESTED', 'CRITICAL'].includes(String(pr.status || '').toUpperCase()) ||
+        pr.visit_type === 'Critical',
     )
     .map((pr) => ({
       id: 'PRE-' + pr.pre_request_id,
-      date: formatFullDate(pr.decided_at || pr.updated_at || pr.created_at),
-      isoDate: toIsoDate(pr.decided_at || pr.updated_at || pr.created_at),
-      department: pr.department || 'Emergency Care',
+      date: formatFullDate(pr.decided_at || pr.created_at),
+      isoDate: toIsoDate(pr.decided_at || pr.created_at),
+      department: pr.department || 'Critical Care',
       description:
-        pr.visit_type === 'Emergency'
-          ? 'Emergency Care (' + (pr.department || 'Emergency') + ') — ' + (pr.status === 'ADMITTED' ? 'In Care' : 'Triage Active')
+        pr.visit_type === 'Critical'
+          ? 'Critical Care (' + (pr.department || 'Critical Care') + ') — ' + (pr.status === 'ADMITTED' ? 'In Care' : 'Triage Active')
           : ((pr.department || 'General') + ' ' + (pr.visit_type || '')).trim(),
     }));
 
@@ -314,7 +337,7 @@ export function buildBillsAndDocuments(bundles, servicesById, receipts, discharg
 
   receipts.forEach((r) => {
     docIndex['RECEIPT:' + r.receipt_id] = {
-      gross: r.amount, coverage: 0, amount: r.amount, mode: r.payment_mode,
+      gross: r.amount, gross_amount: r.amount, coverage: 0, insurance_deduction: 0, amount: r.amount, mode: r.payment_mode, payment_mode: r.payment_mode,
       status: 'PAID', ts: new Date(r.generated_at).getTime(),
     };
     receiptDocs.push({
@@ -356,7 +379,7 @@ export function buildBillsAndDocuments(bundles, servicesById, receipts, discharg
 
 export function buildNotifications(preRequests) {
   return preRequests
-    .filter((pr) => ['APPROVED', 'REJECTED', 'ADMITTED', 'EMERGENCY'].includes(String(pr.status || '').toUpperCase()))
+    .filter((pr) => ['APPROVED', 'REJECTED', 'ADMITTED', 'CRITICAL'].includes(String(pr.status || '').toUpperCase()))
     .map((pr) => {
       let title = 'Pre-registration update';
       let message = (pr.department || 'General') + ' request status: ' + pr.status + '.';
@@ -376,9 +399,9 @@ export function buildNotifications(preRequests) {
         title = 'You have been admitted';
         message = 'Admission confirmed for ' + (pr.department || 'your visit') + '.';
         variant = 'success';
-      } else if (pr.status === 'EMERGENCY') {
-        title = 'Emergency admission logged';
-        message = 'Our team has logged an emergency admission for you.';
+      } else if (pr.status === 'CRITICAL') {
+        title = 'Critical care intake logged';
+        message = 'Our team has logged a critical care admission for you.';
         variant = 'warning';
       }
 

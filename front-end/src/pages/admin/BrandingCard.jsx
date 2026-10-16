@@ -1,6 +1,7 @@
 'use strict';
 
 import { useState } from 'react';
+import Button from '../../components/ui/Button.jsx';
 import { api } from '../../api/index.js';
 import { toast } from '../../components/feedback/feedback.js';
 
@@ -75,9 +76,9 @@ export default function BrandingCard() {
                 : ''}
             </div>
           </div>
-          <button className="btn btn-primary btn-default" id="branding-upload-btn" onClick={uploadBranding} disabled={uploading}>
+          <Button variant="primary" id="branding-upload-btn" onClick={uploadBranding} disabled={uploading}>
             {uploading ? 'Uploading…' : 'Upload Logo'}
-          </button>
+          </Button>
         </div>
       </div>
     </div>

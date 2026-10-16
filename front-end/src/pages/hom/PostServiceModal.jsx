@@ -36,10 +36,12 @@ function PostServiceForm({ admissions, services, onClose, onChanged }) {
     if (!serviceId) return setError('Please select a service.');
     if (quantity < 1) return setError('Quantity must be at least 1.');
 
+    const selectedAdm = admissions.find((a) => a.admission_id === Number(admissionId));
     setSubmitting(true);
     try {
       await api.billing.leaders.create({
         admission_id: Number(admissionId),
+        patient_id: selectedAdm ? selectedAdm.patient_id : undefined,
         service_id: Number(serviceId),
         quantity,
       });

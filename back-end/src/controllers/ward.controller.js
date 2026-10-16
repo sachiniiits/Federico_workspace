@@ -191,31 +191,6 @@ function updateBedRequest(req, res, next) {
   sendResult(res, result, 200);
 }
 
-function findAllEmergencies(req, res) {
-  sendResult(res, scopeToOrg(wardService.findAllEmergencies(), req), 200);
-}
-
-function createEmergency(req, res) {
-  const createdBy = req.session ? req.session.userId : null;
-  const result = wardService.createEmergency(
-    withTenant(req, req.body),
-    createdBy,
-  );
-  logger.log(
-    `✅ EMERGENCY LOGGED  id=${result.emergency_id}  type=${result.emergency_type}`,
-  );
-  sendResult(res, result, 201);
-}
-
-function updateEmergency(req, res) {
-  const existing = wardService
-    .findAllEmergencies()
-    .find((e) => e.emergency_id === +req.params.id);
-  if (existing && !belongsToOrg(existing, req))
-    return res.status(403).json(FORBIDDEN);
-  sendResult(res, wardService.updateEmergency(+req.params.id, req.body), 200);
-}
-
 module.exports = {
   findAllWards,
   createWard,
@@ -228,7 +203,4 @@ module.exports = {
   findAllBedRequests,
   createBedRequest,
   updateBedRequest,
-  findAllEmergencies,
-  createEmergency,
-  updateEmergency,
 };

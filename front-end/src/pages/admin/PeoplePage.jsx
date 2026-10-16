@@ -6,12 +6,14 @@ import { useApi } from '../../hooks/useApi.js';
 import { useDocumentTitle } from '../../hooks/useDocumentTitle.js';
 import { useSession } from '../../auth/useSession.js';
 import Button from '../../components/ui/Button.jsx';
+import Badge from '../../components/ui/Badge.jsx';
+import StatCard from '../../components/ui/StatCard.jsx';
+import SearchToolbar from '../../components/ui/SearchToolbar.jsx';
 import PageHeader from '../../components/layout/PageHeader.jsx';
 import EmptyState from '../../components/ui/EmptyState.jsx';
 import { toast, confirm } from '../../components/feedback/feedback.js';
 import StaffDialog from './StaffDialog.jsx';
 import DoctorDialog from './DoctorDialog.jsx';
-import BrandingCard from './BrandingCard.jsx';
 
 /** The portal roles a staff login can hold (Admin is the provisioned owner). */
 const STAFF_ROLES = [
@@ -21,20 +23,19 @@ const STAFF_ROLES = [
 ];
 
 /**
- * Ported from Admin/screen-05-people.html + people.js.
- *
- * The organization's single Staff & Doctors directory. It replaced the
- * separate Roles & Staff screen and its 24-checkbox custom-RBAC matrix: each
- * staff login now has one portal role, changed from the dropdown in its row,
- * and a one-click enable/disable.
+ * Staff & Medical Directory for the organization.
+ * Manages administrative logins (HOM, PRE, FA) and medical doctors/specialists.
  */
 export default function PeoplePage() {
-  useDocumentTitle('People | Federico Hospital Admin');
+  useDocumentTitle('Staff & Doctors | Federico Hospital Admin');
   const { tenant } = useSession();
   const emailDomain = tenant?.email_domain || null;
 
   const [staffDialogOpen, setStaffDialogOpen] = useState(false);
   const [editingDoctorId, setEditingDoctorId] = useState(undefined);
+  const [staffQuery, setStaffQuery] = useState('');
+  const [doctorQuery, setDoctorQuery] = useState('');
+  const [selectedSpecialization, setSelectedSpecialization] = useState('ALL');
 
   // staff / doctors: null = loading, false = failed, array = loaded.
   const staffLoad = useApi(async () => {
@@ -50,16 +51,46 @@ export default function PeoplePage() {
 
   const doctorsLoad = useApi(async () => {
     try {
-      const [d, w] = await Promise.all([api.doctors.list(), api.wards.list().catch(() => [])]);
-      return { doctors: d || [], wards: w || [] };
+      const d = await api.doctors.list();
+      return d || [];
     } catch (err) {
       toast(err.message || 'Could not load doctors.', 'error');
       throw err;
     }
   }, []);
-  const doctors = doctorsLoad.error ? false : doctorsLoad.data ? doctorsLoad.data.doctors : null;
-  const wards = doctorsLoad.data ? doctorsLoad.data.wards : [];
+  const doctors = doctorsLoad.error ? false : doctorsLoad.data;
   const loadDoctors = doctorsLoad.reload;
+
+  const staffList = Array.isArray(staff) ? staff : [];
+  const doctorList = Array.isArray(doctors) ? doctors : [];
+
+  const activeStaffCount = staffList.filter((s) => s.is_active !== false).length;
+  const uniqueSpecialties = Array.from(new Set(doctorList.map((d) => d.specialization).filter(Boolean))).sort();
+
+  const filteredStaff = staffQuery.trim()
+    ? staffList.filter((s) => {
+        const q = staffQuery.toLowerCase();
+        return (
+          (s.name && s.name.toLowerCase().includes(q)) ||
+          (s.email && s.email.toLowerCase().includes(q)) ||
+          (s.actor_role && s.actor_role.toLowerCase().includes(q))
+        );
+      })
+    : staffList;
+
+  const filteredDoctors = doctorList.filter((d) => {
+    const matchSpec =
+      selectedSpecialization === 'ALL' || d.specialization === selectedSpecialization;
+    if (!matchSpec) return false;
+    if (!doctorQuery.trim()) return true;
+    const q = doctorQuery.toLowerCase();
+    return (
+      (d.name && d.name.toLowerCase().includes(q)) ||
+      (d.specialization && d.specialization.toLowerCase().includes(q)) ||
+      (d.phone && d.phone.toLowerCase().includes(q)) ||
+      (d.email && d.email.toLowerCase().includes(q))
+    );
+  });
 
   async function toggleStaff(userId, next) {
     try {
@@ -75,7 +106,6 @@ export default function PeoplePage() {
     if (nextRole === member.actor_role) return;
     try {
       const updated = await api.rbac.setStaffRole(member.user_id, nextRole);
-      // The login email's tag follows the role (rekha.pre@ → rekha.hom@).
       toast(
         member.name + ' is now ' + nextRole + '. They now sign in as ' + (updated?.email || member.email) + '.',
         'success',
@@ -87,7 +117,7 @@ export default function PeoplePage() {
   }
 
   async function deleteDoctor(doctorId) {
-    const doc = (doctors || []).find((d) => d.doctor_id === doctorId);
+    const doc = (doctorList || []).find((d) => d.doctor_id === doctorId);
     if (!doc) return;
     const ok = await confirm({
       title: 'Remove ' + doc.name + '?',
@@ -108,20 +138,46 @@ export default function PeoplePage() {
   return (
     <main className="dashboard-container">
       <PageHeader
-        title="People"
+        title="Staff & Medical Directory"
         subtitle={
           <>
-            Add staff logins for your organization and manage doctors by department. Staff sign in
-            to their own portal with the email and password you set here.
+            Manage administrative staff logins (HOM, PRE, FA) and registered medical doctors &amp; specialists.
             {emailDomain && (
               <span style={{ display: 'block', marginTop: 4 }}>
-                Staff email domain: <strong>@{emailDomain}</strong> {'—'} logins look like{' '}
-                <code>name.hom@{emailDomain}</code>. Only Federico platform staff can change the domain.
+                Staff email domain: <strong>@{emailDomain}</strong> {'—'} logins follow{' '}
+                <code>name.role@{emailDomain}</code>.
               </span>
             )}
           </>
         }
       />
+
+      <div className="metrics-grid">
+        <StatCard
+          label="Staff Accounts"
+          value={staffList.length}
+          sub="HOM, PRE, and FA logins"
+          variant="primary"
+        />
+        <StatCard
+          label="Active Staff"
+          value={activeStaffCount}
+          sub={`${staffList.length - activeStaffCount} disabled accounts`}
+          variant="success"
+        />
+        <StatCard
+          label="Medical Doctors"
+          value={doctorList.length}
+          sub="Hospital physicians & consultants"
+          variant="info"
+        />
+        <StatCard
+          label="Clinical Specialties"
+          value={uniqueSpecialties.length}
+          sub="Distinct medical fields"
+          variant="default"
+        />
+      </div>
 
       <div className="card">
         <div className="card-header" style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -131,9 +187,16 @@ export default function PeoplePage() {
               HOM (operations), PRE (registration) and FA (finance) logins for this organization.
             </p>
           </div>
-          <button className="btn btn-primary btn-default" id="new-staff-btn" onClick={() => setStaffDialogOpen(true)}>
+          <Button variant="primary" id="new-staff-btn" onClick={() => setStaffDialogOpen(true)}>
             + Add Person
-          </button>
+          </Button>
+        </div>
+        <div style={{ padding: '0 24px 16px 24px' }}>
+          <SearchToolbar
+            searchQuery={staffQuery}
+            onSearchChange={setStaffQuery}
+            placeholder="Search staff by name, email, or role..."
+          />
         </div>
         <div className="card-content" style={{ padding: 0 }}>
           <div className="table-container">
@@ -144,15 +207,15 @@ export default function PeoplePage() {
               <tbody id="staff-tbody">
                 {staff === null ? null : staff === false ? (
                   <tr><td colSpan="5">Could not load staff.</td></tr>
-                ) : staff.length === 0 ? (
+                ) : filteredStaff.length === 0 ? (
                   <EmptyState
                     asTableRow
                     colSpan={5}
-                    title="No staff logins yet"
-                    message="Use “Add Person” to invite team members."
+                    title={staffList.length === 0 ? "No staff logins yet" : "No matching staff"}
+                    message={staffList.length === 0 ? "Use “Add Person” to invite team members." : "Try adjusting your search query."}
                   />
                 ) : (
-                  staff.map((m) => {
+                  filteredStaff.map((m) => {
                     const active = m.is_active !== false;
                     return (
                       <tr key={m.user_id}>
@@ -171,7 +234,11 @@ export default function PeoplePage() {
                             ))}
                           </select>
                         </td>
-                        <td><span className={'status-pill ' + (active ? 'active' : 'inactive')}>{active ? 'Active' : 'Disabled'}</span></td>
+                        <td>
+                          <Badge variant={active ? 'success' : 'neutral'}>
+                            {active ? 'Active' : 'Disabled'}
+                          </Badge>
+                        </td>
                         <td>
                           <Button
                             variant={active ? 'outline' : 'primary'}
@@ -194,38 +261,64 @@ export default function PeoplePage() {
       <div className="card" style={{ marginTop: 24 }}>
         <div className="card-header" style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
           <div>
-            <h2 className="card-title">Doctors &amp; Departments</h2>
+            <h2 className="card-title">Medical Doctors &amp; Specialists</h2>
             <p className="card-description">
-              Assign doctors to a department/ward.
+              Registered hospital physicians, clinical consultants, and their medical specializations.
             </p>
           </div>
-          <button className="btn btn-primary btn-default" id="new-doctor-btn" onClick={() => setEditingDoctorId(null)}>
+          <Button variant="primary" id="new-doctor-btn" onClick={() => setEditingDoctorId(null)}>
             + Add Doctor
-          </button>
+          </Button>
+        </div>
+        <div style={{ padding: '0 24px 16px 24px' }}>
+          <SearchToolbar
+            searchQuery={doctorQuery}
+            onSearchChange={setDoctorQuery}
+            placeholder="Search doctors by name, specialization, or contact..."
+            filters={[
+              {
+                id: 'specialization',
+                value: selectedSpecialization,
+                onChange: setSelectedSpecialization,
+                options: [
+                  { value: 'ALL', label: 'All Specializations' },
+                  ...uniqueSpecialties.map((s) => ({ value: s, label: s })),
+                ],
+              },
+            ]}
+          />
         </div>
         <div className="card-content" style={{ padding: 0 }}>
           <div className="table-container">
             <table className="data-table">
               <thead>
-                <tr><th>Name</th><th>Specialization</th><th>Department</th><th>Contact</th><th>Action</th></tr>
+                <tr>
+                  <th>Doctor Name</th>
+                  <th>Specialization</th>
+                  <th>Phone</th>
+                  <th>Email</th>
+                  <th>Actions</th>
+                </tr>
               </thead>
               <tbody id="doctors-tbody">
                 {doctors === null ? null : doctors === false ? (
                   <tr><td colSpan="5">Could not load doctors.</td></tr>
-                ) : doctors.length === 0 ? (
+                ) : filteredDoctors.length === 0 ? (
                   <EmptyState
                     asTableRow
                     colSpan={5}
-                    title="No doctors yet"
-                    message="Use “Add Doctor” to configure medical staff."
+                    title={doctorList.length === 0 ? "No doctors yet" : "No matching doctors"}
+                    message={doctorList.length === 0 ? "Use “Add Doctor” to configure medical staff." : "Try adjusting your search query or filter."}
                   />
                 ) : (
-                  doctors.map((d) => (
+                  filteredDoctors.map((d) => (
                     <tr key={d.doctor_id}>
                       <td style={{ fontWeight: 500 }}>{d.name}</td>
-                      <td>{d.specialization || '—'}</td>
-                      <td>{d.department || '—'}</td>
-                      <td>{d.phone || d.email || '—'}</td>
+                      <td>
+                        <Badge variant="info">{d.specialization || 'General Practitioner'}</Badge>
+                      </td>
+                      <td>{d.phone || '—'}</td>
+                      <td>{d.email || '—'}</td>
                       <td style={{ display: 'flex', gap: 6 }}>
                         <Button variant="outline" size="sm" onClick={() => setEditingDoctorId(d.doctor_id)}>Edit</Button>
                         <Button variant="danger" size="sm" onClick={() => deleteDoctor(d.doctor_id)}>Delete</Button>
@@ -239,8 +332,6 @@ export default function PeoplePage() {
         </div>
       </div>
 
-      <BrandingCard />
-
       <StaffDialog
         open={staffDialogOpen}
         emailDomain={emailDomain}
@@ -249,12 +340,10 @@ export default function PeoplePage() {
       />
       <DoctorDialog
         open={editingDoctorId !== undefined}
-        doctor={editingDoctorId ? (doctors || []).find((d) => d.doctor_id === editingDoctorId) : null}
-        wards={wards}
+        doctor={editingDoctorId ? (doctorList || []).find((d) => d.doctor_id === editingDoctorId) : null}
         onClose={() => setEditingDoctorId(undefined)}
         onSaved={loadDoctors}
       />
     </main>
   );
 }
-

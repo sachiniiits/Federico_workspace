@@ -10,12 +10,14 @@ const { maxId } = require('../utils/maxId');
  * had no equivalent beyond raw console request logging.
  */
 function log(type, text, meta, organizationId) {
+  const hospitalId = (meta && meta.hospital_id) ? Number(meta.hospital_id) : (meta && meta.hospitalId) ? Number(meta.hospitalId) : null;
   const entry = {
-    id: maxId(dataStore.activityLog, 'id') + 1,
+    id: maxId(dataStore.activityLog, 'id', 1) + 1,
     type: type || 'info', // 'info' | 'success' | 'warning' | 'error'
     text: text || '',
     meta: meta || null,
     organization_id: organizationId ? Number(organizationId) : null,
+    hospital_id: hospitalId,
     created_at: new Date().toISOString(),
   };
   dataStore.activityLog.unshift(entry);

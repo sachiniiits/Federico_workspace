@@ -189,9 +189,26 @@ describe('Allocation, booking and billing guards', () => {
 
   describe('discharge summary final amount', () => {
     it('derives final_amount from ledger entries and keeps it in step with later charges', () => {
-      const admission = dataStore.admissions.find(
-        (a) => a.organization_id === 1 && !billingService.findLedgerByAdmission(a.admission_id),
-      );
+      const admission =
+        dataStore.admissions.find(
+          (a) => a.organization_id === 1 && !billingService.findLedgerByAdmission(a.admission_id),
+        ) ||
+        (() => {
+          const maxId = dataStore.admissions.reduce((m, a) => Math.max(m, a.admission_id), 0);
+          const newAdm = {
+            admission_id: maxId + 1,
+            patient_id: 201,
+            bed_id: 11,
+            status: 'ADMITTED',
+            admit_time: new Date().toISOString(),
+            discharge_time: null,
+            receipt_sent_to_hom: false,
+            organization_id: 1,
+            hospital_id: 1,
+          };
+          dataStore.admissions.push(newAdm);
+          return newAdm;
+        })();
       const ledger = billingService.createLedger({ admission_id: admission.admission_id });
       billingService.addLedgerEntry({ ledger_id: ledger.ledger_id, service_id: 1, quantity: 2, unit_price: 500 });
 
@@ -212,9 +229,26 @@ describe('Allocation, booking and billing guards', () => {
     });
 
     it('never lets the deduction exceed the gross or go negative', () => {
-      const admission = dataStore.admissions.find(
-        (a) => a.organization_id === 1 && !billingService.findLedgerByAdmission(a.admission_id),
-      );
+      const admission =
+        dataStore.admissions.find(
+          (a) => a.organization_id === 1 && !billingService.findLedgerByAdmission(a.admission_id),
+        ) ||
+        (() => {
+          const maxId = dataStore.admissions.reduce((m, a) => Math.max(m, a.admission_id), 0);
+          const newAdm = {
+            admission_id: maxId + 1,
+            patient_id: 201,
+            bed_id: 11,
+            status: 'ADMITTED',
+            admit_time: new Date().toISOString(),
+            discharge_time: null,
+            receipt_sent_to_hom: false,
+            organization_id: 1,
+            hospital_id: 1,
+          };
+          dataStore.admissions.push(newAdm);
+          return newAdm;
+        })();
       const ledger = billingService.createLedger({ admission_id: admission.admission_id });
       billingService.addLedgerEntry({ ledger_id: ledger.ledger_id, service_id: 1, quantity: 1, unit_price: 400 });
 

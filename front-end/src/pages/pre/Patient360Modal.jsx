@@ -1,7 +1,8 @@
 'use strict';
 
-import { useEffect } from 'react';
-import { createPortal } from 'react-dom';
+import Badge from '../../components/ui/Badge.jsx';
+import Button from '../../components/ui/Button.jsx';
+import Modal from '../../components/layout/Modal.jsx';
 import { statusLabel, formatDate, to12Hour } from './preHelpers.js';
 
 /**
@@ -13,20 +14,15 @@ import { statusLabel, formatDate, to12Hour } from './preHelpers.js';
  * appointment is not listed twice.
  */
 export default function Patient360Modal({ patient, doctorsById, bedsById, onClose }) {
-  useEffect(() => {
-    if (!patient) return undefined;
-    function onKeydown(e) {
-      if (e.key === 'Escape') onClose();
-    }
-    document.addEventListener('keydown', onKeydown);
-    return () => document.removeEventListener('keydown', onKeydown);
-  }, [patient, onClose]);
-
   if (!patient) return null;
 
   const seen = new Set();
-  const encounters = [...(patient.preRequests || []), ...(patient.appointments || [])].filter((enc) => {
-    const key = enc.appointment_id ? 'apt_' + enc.appointment_id : enc.pre_request_id ? 'pr_' + enc.pre_request_id : 'raw_' + Math.random();
+  const encounters = [...(patient.preRequests || []), ...(patient.appointments || [])].filter((enc, i) => {
+    const key = enc.appointment_id
+      ? 'apt_' + enc.appointment_id
+      : enc.pre_request_id
+        ? 'pr_' + enc.pre_request_id
+        : 'enc_' + (enc.id || i);
     if (seen.has(key)) return false;
     seen.add(key);
     return true;
@@ -39,10 +35,10 @@ export default function Patient360Modal({ patient, doctorsById, bedsById, onClos
     </div>
   );
 
-  return createPortal(
-    <div id="patientHistoryModal" className="popup active" role="dialog" aria-modal="true" style={{ display: 'flex' }}
-      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
-      <div className="emergency-modal-content" style={{ maxWidth: 720 }}>
+  return (
+    <Modal open={Boolean(patient)} onClose={onClose} className="popup" labelledBy="historyModalTitle">
+      <div id="patientHistoryModal" style={{ display: 'contents' }}>
+        <div className="emergency-modal-content" style={{ maxWidth: 720 }}>
         <div className="emergency-modal-head">
           <div>
             <h2 id="historyModalTitle" style={{ color: 'var(--md-primary, #6750a4)' }}>
@@ -96,12 +92,16 @@ export default function Patient360Modal({ patient, doctorsById, bedsById, onClos
                     return (
                       <tr key={i}>
                         <td>
-                          {formatDate(enc.requested_date || enc.appointment_date || enc.created_at)}{' '}
-                          <small>({to12Hour(enc.requested_time || enc.appointment_time) || ''})</small>
+                          {formatDate(enc.scheduled_datetime || enc.requested_date || enc.created_at)}{' '}
+                          <small>({to12Hour(enc.scheduled_datetime ? enc.scheduled_datetime.slice(11, 16) : enc.requested_time) || ''})</small>
                         </td>
                         <td>{enc.department || (doc ? doc.specialization : 'General')}</td>
                         <td>{doc ? doc.name : 'Attending Specialist'}</td>
-                        <td>{enc.status === 'CONSULTATION_DONE' && enc.visit_type === 'Follow-Up' ? 'Follow Up' : statusLabel(enc.status)}</td>
+                        <td>
+                          <Badge variant={enc.status === 'CONSULTATION_DONE' || enc.status === 'COMPLETED' ? 'success' : enc.status === 'REJECTED' || enc.status === 'CANCELLED' ? 'error' : 'neutral'}>
+                            {enc.status === 'CONSULTATION_DONE' && enc.visit_type === 'Follow-Up' ? 'Follow Up' : statusLabel(enc.status)}
+                          </Badge>
+                        </td>
                       </tr>
                     );
                   })}
@@ -134,9 +134,9 @@ export default function Patient360Modal({ patient, doctorsById, bedsById, onClos
                     return (
                       <tr key={adm.admission_id}>
                         <td>{formatDate(adm.admit_time || adm.created_at)}</td>
-                        <td>{bed ? bed.bed_number + ' (' + (bed.ward_type || 'Ward') + ')' : 'Bed Assigned'}</td>
-                        <td>{adm.admission_type || 'Inpatient'}</td>
-                        <td><span className={'status ' + (active ? 'confirmed' : 'pending')}>{adm.status}</span></td>
+                        <td>{bed ? bed.bed_number + ' (' + (bed.ward_name || 'Ward') + ')' : 'Bed Assigned'}</td>
+                        <td>{adm.visit_type || 'IPD'}</td>
+                        <td><Badge variant={active ? 'success' : 'neutral'}>{adm.status}</Badge></td>
                       </tr>
                     );
                   })}
@@ -147,13 +147,13 @@ export default function Patient360Modal({ patient, doctorsById, bedsById, onClos
         </div>
 
         <div className="emergency-modal-actions" style={{ justifyContent: 'flex-end' }}>
-          <button className="btn suggest" type="button" style={{ borderRadius: 'var(--radius-full, 9999px)', padding: '8px 20px' }} onClick={onClose}>
+          <Button variant="secondary" className="suggest" type="button" style={{ borderRadius: 'var(--radius-full, 9999px)', padding: '8px 20px' }} onClick={onClose}>
             Close
-          </button>
+          </Button>
         </div>
       </div>
-    </div>,
-    document.body,
-  );
+    </div>
+  </Modal>
+);
 }
 

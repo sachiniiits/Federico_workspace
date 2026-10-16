@@ -35,7 +35,7 @@ export default function BedDetailModal({
   let since;
   if (isOccupied) {
     badge = <Badge variant="error">OCCUPIED</Badge>;
-    since = 'Admitted: ' + formatDateTime(linked.request.decided_at || linked.request.updated_at || bed.updated_at);
+    since = 'Admitted: ' + formatDateTime(linked.request.decided_at || linked.request.created_at);
   } else if (isAvailable) {
     badge = <Badge variant="success">AVAILABLE {'·'} Not Occupied</Badge>;
     since = 'Status: Vacant & Clean';
@@ -87,7 +87,7 @@ export default function BedDetailModal({
               <div>
                 <div className="label">Attending Physician</div>
                 <div style={{ fontWeight: 500, fontSize: 14 }}>
-                  {doctor ? 'Dr. ' + doctor.name : linked.request.doctor_id ? 'Doctor #' + linked.request.doctor_id : 'Staff Physician'}
+                  {doctor ? (doctor.name.startsWith('Dr.') ? doctor.name : 'Dr. ' + doctor.name) : linked.request.doctor_id ? 'Doctor #' + linked.request.doctor_id : 'Staff Physician'}
                 </div>
               </div>
             </div>

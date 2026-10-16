@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import DialogShell from '../../components/layout/DialogShell.jsx';
+import Button from '../../components/ui/Button.jsx';
 import { api } from '../../api/index.js';
 import { toast } from '../../components/feedback/feedback.js';
 
@@ -73,8 +74,12 @@ function WardForm({ ward, bedCount, onClose, onSaved }) {
           <input id="ward-beds" type="number" min="1" required placeholder="e.g. 10" value={beds} onChange={(e) => setBeds(e.target.value)} />
         </div>
         <div className="md-dialog-actions">
-          <button type="button" className="btn btn-outline btn-default" id="ward-cancel" onClick={onClose}>Cancel</button>
-          <button type="submit" className="btn btn-primary btn-default">Save</button>
+          <Button variant="outline" type="button" id="ward-cancel" onClick={onClose}>
+            Cancel
+          </Button>
+          <Button variant="primary" type="submit">
+            Save
+          </Button>
         </div>
       </form>
     </DialogShell>

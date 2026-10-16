@@ -4,8 +4,12 @@ import { useState } from 'react';
 import { api } from '../../api/index.js';
 import { useApi } from '../../hooks/useApi.js';
 import { useDocumentTitle } from '../../hooks/useDocumentTitle.js';
-import { Link } from 'react-router-dom';
 import { toast } from '../../components/feedback/feedback.js';
+import StatCard from '../../components/ui/StatCard.jsx';
+import Button from '../../components/ui/Button.jsx';
+import Badge from '../../components/ui/Badge.jsx';
+import EmptyState from '../../components/ui/EmptyState.jsx';
+import PageHeader from '../../components/layout/PageHeader.jsx';
 import { joinPreRequestsWithPatients, formatDate, to12Hour } from './preHelpers.js';
 import BedRequestModal from './BedRequestModal.jsx';
 
@@ -19,7 +23,7 @@ export default function PreDashboardPage() {
   useDocumentTitle('Dashboard');
   const [bedRequestId, setBedRequestId] = useState(null);
 
-  const { data, reload } = useApi(async () => {
+  const { data, reload, error } = useApi(async () => {
     const [preRequests, patients, doctors, wards, bedRequests] = await Promise.all([
       api.preRequests.list().catch(() => []),
       api.patients.list().catch(() => []),
@@ -72,24 +76,48 @@ export default function PreDashboardPage() {
     await reload();
   }
 
-  const card = (to, title, value) => (
-    <Link to={to} className="card">
-      <h3>{title}</h3>
-      <p>{value}</p>
-    </Link>
-  );
-
   return (
     <>
-      <div className="cards">
-        {card('/PRE/pages/request.html', 'Pending Requests', counters.pending + ' Requests')}
-        {card('/PRE/pages/rejected.html', 'Rejected Requests', counters.rejected + ' Requests')}
-        {card('/PRE/pages/admitted.html', 'Admitted Patients', counters.admitted + ' Patients')}
-        {card('/PRE/pages/discharge.html', 'Discharge Approvals', counters.discharge + ' In Queue')}
+      <PageHeader
+        title="Patient Relational Executive (PRE)"
+        subtitle="Manage appointments, verify records, coordinate bed allocations & facilitate discharges"
+      />
+
+      <div className="cards" style={{ padding: '0 0 24px 0', margin: 0 }}>
+        <StatCard to="/PRE/pages/request.html" label="Pending Requests" value={counters.pending + ' Requests'} variant="warning" />
+        <StatCard to="/PRE/pages/rejected.html" label="Rejected Requests" value={counters.rejected + ' Requests'} variant="error" />
+        <StatCard to="/PRE/pages/admitted.html" label="Admitted Patients" value={counters.admitted + ' Patients'} variant="info" />
+        <StatCard to="/PRE/pages/discharge.html" label="Discharge Approvals" value={counters.discharge + ' In Queue'} variant="primary" />
       </div>
 
-      <div className="table-container">
-        <h2>Approved Patients</h2>
+      <div className="table-container" style={{ margin: 0 }}>
+        <div
+          style={{
+            padding: '20px 24px',
+            borderBottom: '1px solid var(--color-border, #e2e8f0)',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            flexWrap: 'wrap',
+            gap: 12,
+          }}
+        >
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: 'var(--color-fg)' }}>Approved Patients</h2>
+              <Badge variant="neutral">{approved.length} {approved.length === 1 ? 'Patient' : 'Patients'}</Badge>
+            </div>
+            <p style={{ margin: '4px 0 0', fontSize: 13, color: 'var(--color-muted-fg)' }}>
+              Scheduled appointments awaiting clinical check-in, follow-up consultation, or inpatient admission
+            </p>
+          </div>
+          <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+            <Button variant="outline" size="sm" onClick={reload} title="Refresh patient list">
+              ↻ Refresh
+            </Button>
+          </div>
+        </div>
+
         <table>
           <thead>
             <tr>
@@ -98,24 +126,29 @@ export default function PreDashboardPage() {
             </tr>
           </thead>
           <tbody id="approvedTable">
-            {approved.length === 0 ? (
-              <tr>
-                <td colSpan="10" style={{ textAlign: 'center', padding: 24, color: 'var(--text-secondary)' }}>
-                  No Scheduled Patients Awaiting Check-in
-                </td>
-              </tr>
+            {error ? (
+              <EmptyState
+                asTableRow
+                colSpan={10}
+                icon={null}
+                title="Failed to load approved patients"
+                message={error.message}
+              />
+            ) : approved.length === 0 ? (
+              <EmptyState
+                asTableRow
+                colSpan={10}
+                icon={null}
+                title="No Scheduled Patients Awaiting Check-in"
+                message="All approved patient requests have been scheduled or admitted."
+              />
             ) : (
               approved.map((r) => {
                 const hasPendingBedRequest = pendingBedRequestIds.has(r.pre_request_id);
 
-                let statusBadge = <span className="badge badge-neutral">Scheduled</span>;
-                if (hasPendingBedRequest) {
-                  statusBadge = <span className="badge badge-info">Pending Bed Request</span>;
-                }
-
                 return (
                   <tr key={r.pre_request_id}>
-                    <td><strong>{r.patientUhid}</strong></td>
+                    <td><strong style={{ color: 'var(--md-primary, #0f766e)' }}>{r.patientUhid}</strong></td>
                     <td>{r.patientName}</td>
                     <td>{r.patientAge}</td>
                     <td>{r.patientGender}</td>
@@ -123,18 +156,22 @@ export default function PreDashboardPage() {
                     <td>{r.doctorName}</td>
                     <td>{formatDate(r.requested_date)}</td>
                     <td>{to12Hour(r.requested_time) || '-'}</td>
-                    <td>{statusBadge}</td>
+                    <td>
+                      <Badge variant={hasPendingBedRequest ? 'info' : 'success'}>
+                        {hasPendingBedRequest ? 'Pending Bed Request' : 'Scheduled'}
+                      </Badge>
+                    </td>
                     <td>
                       {hasPendingBedRequest ? (
-                        <span style={{ color: 'var(--color-muted-fg)', fontSize: 12 }}>Awaiting HOM</span>
+                        <Badge variant="warning">Awaiting HOM Bed</Badge>
                       ) : (
                         <div style={{ display: 'flex', gap: 8, justifyContent: 'center', flexWrap: 'wrap' }}>
-                          <button className="btn suggest" type="button" onClick={() => completeFollowUp(r.pre_request_id)}>
+                          <Button variant="secondary" size="sm" className="suggest" onClick={() => completeFollowUp(r.pre_request_id)}>
                             Follow Up
-                          </button>
-                          <button className="btn approve" type="button" onClick={() => setBedRequestId(r.pre_request_id)}>
+                          </Button>
+                          <Button variant="primary" size="sm" className="approve" onClick={() => setBedRequestId(r.pre_request_id)}>
                             Admitted
-                          </button>
+                          </Button>
                         </div>
                       )}
                     </td>

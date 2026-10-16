@@ -57,7 +57,9 @@ export default function PatientFlowPage() {
     const billsClearedByPatient = {};
     (Array.isArray(admissions) ? admissions : []).forEach((a) => {
       const ledger = ledgerByAdmission[a.admission_id];
-      if (a.bills_cleared || (ledger && ledger.status === 'PAID')) billsClearedByPatient[a.patient_id] = true;
+      if (a.receipt_sent_to_hom || (ledger && ledger.status === 'PAID')) {
+        billsClearedByPatient[a.patient_id] = true;
+      }
     });
 
     const rows = joinPreRequestsWithPatients(
@@ -304,7 +306,7 @@ export default function PatientFlowPage() {
                           {row.status === 'DISCHARGE_REQUESTED' ? (
                             <Button variant="primary" size="sm" onClick={() => setDischargeId(row.pre_request_id)}>Approve Discharge</Button>
                           ) : row.status === 'DISCHARGED' ? (
-                            <Button variant="outline" size="sm" onClick={() => setDetail({ id: row.pre_request_id, tab: 'supply' })}>
+                            <Button variant="outline" size="sm" onClick={() => setDetail({ id: row.pre_request_id, tab: 'receipt' })}>
                               View Receipt
                             </Button>
                           ) : null}

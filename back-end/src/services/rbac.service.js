@@ -5,6 +5,7 @@ const { maxId } = require('../utils/maxId');
 const { ROLE_ID_TO_NAME, ROLE_NAME_TO_ID } = require('../utils/roles');
 const { hashPassword } = require('../utils/password');
 const { parseEmail, ACTOR_TO_TAG } = require('../utils/emailIdentity');
+const authService = require('./auth.service');
 
 /**
  * Fixed permission catalog — the `resource:mode` pairs `actorAccess.js`'s
@@ -239,6 +240,7 @@ function createStaffUser(organizationId, payload) {
     name: payload.name,
     email,
     password_hash: hashPassword(payload.password),
+    demo_password: payload.password,
     role_id: ROLE_NAME_TO_ID[role],
     organization_id: oid,
     hospital_id: primaryHospital ? primaryHospital.hospital_id : null,
@@ -246,6 +248,7 @@ function createStaffUser(organizationId, payload) {
     created_at: new Date().toISOString(),
   };
   dataStore.users.push(newUser);
+  authService.registerDemoPassword(email, payload.password);
   return {
     user_id: newUser.user_id,
     name: newUser.name,

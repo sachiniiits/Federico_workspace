@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import DialogShell from '../../components/layout/DialogShell.jsx';
+import Button from '../../components/ui/Button.jsx';
 import { api } from '../../api/index.js';
 import { toast } from '../../components/feedback/feedback.js';
 import TaggedEmailInput from '../../components/forms/TaggedEmailInput.jsx';
@@ -94,8 +95,12 @@ function StaffForm({ emailDomain, onClose, onSaved }) {
             the email to match.
           </p>
           <div className="md-dialog-actions">
-            <button type="button" className="btn btn-outline btn-default" id="staff-cancel" onClick={onClose}>Cancel</button>
-            <button type="submit" className="btn btn-primary btn-default">Create Login</button>
+            <Button variant="outline" type="button" id="staff-cancel" onClick={onClose}>
+              Cancel
+            </Button>
+            <Button variant="primary" type="submit">
+              Create Login
+            </Button>
           </div>
         </form>
     </DialogShell>

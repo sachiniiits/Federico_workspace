@@ -1,8 +1,10 @@
 'use strict';
 
-import { useEffect, useState } from 'react';
-import { createPortal } from 'react-dom';
+import { useState } from 'react';
 import { api } from '../../api/index.js';
+import Badge from '../../components/ui/Badge.jsx';
+import Button from '../../components/ui/Button.jsx';
+import Modal from '../../components/layout/Modal.jsx';
 import { toast } from '../../components/feedback/feedback.js';
 import { formatDate, to12Hour } from './preHelpers.js';
 
@@ -37,14 +39,6 @@ function BedRequestForm({ request, wards, onClose, onSubmitted }) {
   const [priority, setPriority] = useState('NORMAL');
   const [submitting, setSubmitting] = useState(false);
 
-  useEffect(() => {
-    function onKeydown(e) {
-      if (e.key === 'Escape') onClose();
-    }
-    document.addEventListener('keydown', onKeydown);
-    return () => document.removeEventListener('keydown', onKeydown);
-  }, [onClose]);
-
   const selectedWard = wardId ? wards.find((w) => w.ward_id === Number(wardId)) : null;
 
   async function dispatchBedRequest() {
@@ -70,26 +64,26 @@ function BedRequestForm({ request, wards, onClose, onSubmitted }) {
     }
   }
 
-  return createPortal(
-    <div id="preBedRequestModal" className="popup active" role="dialog" aria-modal="true" aria-labelledby="pre-bed-request-title" style={{ display: 'flex' }}
-      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
-      <div className="emergency-modal-content" style={{ maxWidth: 860 }}>
-        <div className="emergency-modal-head">
-          <div>
-            <h2 id="pre-bed-request-title" style={{ color: 'var(--md-primary, #0f766e)' }}>Bed Request</h2>
-            <p>Confirm inpatient bed details before sending the request to HOM.</p>
+  return (
+    <Modal open onClose={onClose} className="popup" labelledBy="pre-bed-request-title">
+      <div id="preBedRequestModal" style={{ display: 'contents' }}>
+        <div className="emergency-modal-content" style={{ maxWidth: 860 }}>
+          <div className="emergency-modal-head">
+            <div>
+              <h2 id="pre-bed-request-title" style={{ color: 'var(--md-primary, #0f766e)' }}>Bed Request</h2>
+              <p>Confirm inpatient bed details before sending the request to HOM.</p>
+            </div>
+            <button className="emergency-modal-close" type="button" onClick={onClose} aria-label="Close modal">{'x'}</button>
           </div>
-          <button className="emergency-modal-close" type="button" onClick={onClose} aria-label="Close modal">{'x'}</button>
-        </div>
 
         <div className="appointment-grid">
           <div>
             <div id="homSelectedPatientBox" className="quick-patient-box" style={{ marginBottom: 16 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
                 <strong id="homCardPatientName" style={{ fontSize: 14 }}>{request.patientName}</strong>
-                <span id="homCardPatientUhid" className="status pending" style={{ background: '#f1f5f9', color: '#475569', fontSize: 11, padding: '2px 8px', borderRadius: 12 }}>
+                <Badge variant="neutral" id="homCardPatientUhid">
                   {request.patientUhid}
-                </span>
+                </Badge>
               </div>
               <div style={{ fontSize: 12, color: 'var(--color-muted-fg)' }}>
                 Department: <strong id="homCardDept" style={{ color: 'var(--color-fg)' }}>{request.department || '-'}</strong> {' '}
@@ -118,24 +112,24 @@ function BedRequestForm({ request, wards, onClose, onSubmitted }) {
                 <label className="emergency-form-label" htmlFor="priority">Triage Priority *</label>
                 <select id="priority" className="emergency-form-control" value={priority} onChange={(e) => setPriority(e.target.value)}>
                   <option value="NORMAL">Normal Priority</option>
-                  <option value="HIGH">High Priority</option>
+                  <option value="URGENT">Urgent Priority</option>
                   <option value="CRITICAL">Critical Priority</option>
                 </select>
               </div>
             </div>
 
             <div style={{ marginTop: 24, display: 'flex', justifyContent: 'flex-end', gap: 12 }}>
-              <button className="btn suggest" type="button" onClick={onClose} style={{ height: 44, padding: '0 20px', fontSize: 12, fontWeight: 600 }}>
+              <Button variant="secondary" className="suggest" type="button" onClick={onClose} style={{ height: 44, padding: '0 20px', fontSize: 12, fontWeight: 600 }}>
                 Cancel
-              </button>
-              <button className="btn green" type="button" onClick={dispatchBedRequest} disabled={submitting} style={{ height: 44, padding: '0 24px', fontSize: 12, fontWeight: 600 }}>
+              </Button>
+              <Button variant="primary" className="green" type="button" onClick={dispatchBedRequest} disabled={submitting} style={{ height: 44, padding: '0 24px', fontSize: 12, fontWeight: 600 }}>
                 Dispatch Bed Request
-              </button>
+              </Button>
             </div>
           </div>
         </div>
       </div>
-    </div>,
-    document.body,
-  );
+    </div>
+  </Modal>
+);
 }

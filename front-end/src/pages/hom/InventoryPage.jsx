@@ -1,6 +1,6 @@
 'use strict';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { api } from '../../api/index.js';
 import { useApi } from '../../hooks/useApi.js';
 import { usePolling } from '../../hooks/usePolling.js';
@@ -17,6 +17,7 @@ import { formatCurrency, formatDate } from './homHelpers.js';
 import { computeItemStatus, itemCost, serviceForItem, findPatientByUhid, validateUsageDetails } from './inventoryHelpers.js';
 import LogUsageModal from './LogUsageModal.jsx';
 import RestockModal from './RestockModal.jsx';
+import AdmittedPatientPicker from './AdmittedPatientPicker.jsx';
 import { usePageStyles } from '../../hooks/usePageStyles.js';
 import inventoryCss from '../../styles/hom/inventory.css?inline';
 
@@ -40,19 +41,52 @@ export default function InventoryPage() {
   const [sidebarError, setSidebarError] = useState('');
 
   const { data, reload } = useApi(async () => {
-    const [items, requests, patients, services] = await Promise.all([
+    const [items, requests, patients, services, admissions, beds] = await Promise.all([
       api.inventory.items.list().catch(() => []),
       api.inventory.requests.list().catch(() => []),
       api.patients.list().catch(() => []),
       api.billing.services.list().catch(() => []),
+      api.admissions.list().catch(() => []),
+      api.wards.beds().catch(() => []),
     ]);
     const arr = (v) => (Array.isArray(v) ? v : []);
-    return { items: arr(items), requests: arr(requests), patients: arr(patients), services: arr(services) };
+    return {
+      items: arr(items),
+      requests: arr(requests),
+      patients: arr(patients),
+      services: arr(services),
+      admissions: arr(admissions),
+      beds: arr(beds),
+    };
   }, []);
 
   usePolling(reload, 15000);
 
-  const d = data || { items: [], requests: [], patients: [], services: [] };
+  const d = data || { items: [], requests: [], patients: [], services: [], admissions: [], beds: [] };
+
+  const admittedPatients = useMemo(() => {
+    const patientMap = new Map((d.patients || []).map((p) => [p.patient_id, p]));
+    const bedMap = new Map((d.beds || []).map((b) => [b.bed_id, b]));
+
+    return (d.admissions || [])
+      .filter((a) => a && a.status && a.status.toUpperCase() !== 'DISCHARGED')
+      .map((adm) => {
+        const pat = patientMap.get(adm.patient_id) || {};
+        const bed = adm.bed_id ? bedMap.get(adm.bed_id) : null;
+        return {
+          admission_id: adm.admission_id,
+          patient_id: adm.patient_id,
+          name: pat.name || adm.patient_name || 'Unknown Patient',
+          uhid: pat.uhid || adm.uhid || '',
+          phone: pat.phone || '',
+          bed_number: bed?.bed_number || adm.bed_number || '-',
+          ward_id: adm.ward_id,
+          status: adm.status,
+          admit_time: adm.admit_time,
+        };
+      })
+      .filter((p) => Boolean(p.uhid));
+  }, [d.admissions, d.patients, d.beds]);
 
   const categories = [...new Set(d.items.map((i) => i.category).filter(Boolean))].sort();
   const q = filters.search.trim().toLowerCase();
@@ -295,10 +329,18 @@ export default function InventoryPage() {
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                 <div>
-                  <input type="text" className="input" id="sidebar-uhid" placeholder="Patient UHID (e.g. FED-2026-8901)"
-                    value={sidebarUhid} onChange={(e) => { setSidebarUhid(e.target.value); setSidebarError(''); }} />
+                  <AdmittedPatientPicker
+                    id="sidebar-uhid"
+                    admittedPatients={admittedPatients}
+                    selectedUhid={sidebarUhid}
+                    onSelect={(p) => {
+                      setSidebarUhid(p ? p.uhid : '');
+                      setSidebarError('');
+                    }}
+                    error={Boolean(sidebarError)}
+                  />
                   <div id="sidebar-patient-name" style={{ fontSize: 12, fontWeight: 500, minHeight: 16, marginTop: 4, color: sidebarPatient ? 'var(--status-success-fg, #1b5e20)' : 'var(--error)' }}>
-                    {sidebarPatient ? '✓ Patient: ' + sidebarPatient.name : sidebarUhid.trim() ? 'Patient UHID not found' : ''}
+                    {sidebarPatient ? 'Admitted: ' + sidebarPatient.name : sidebarUhid.trim() ? 'Patient UHID not found' : ''}
                   </div>
                 </div>
                 <div>
@@ -441,6 +483,7 @@ export default function InventoryPage() {
         open={usageModalItemId !== undefined}
         initialItemId={usageModalItemId}
         data={d}
+        admittedPatients={admittedPatients}
         onClose={() => setUsageModalItemId(undefined)}
         onSubmit={postUsage}
       />

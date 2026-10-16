@@ -17,7 +17,7 @@ export function getEffectiveStatus(bill) {
 export function pastVisits(visits) {
   const now = Date.now();
   return visits.filter((item) => {
-    const ts = new Date(item.isoDate || item.date || '').getTime();
+    const ts = new Date(item.isoDate || '').getTime();
     return Number.isFinite(ts) && ts < now;
   });
 }

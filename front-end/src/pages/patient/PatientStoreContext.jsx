@@ -54,12 +54,21 @@ export function PatientStoreProvider({ children }) {
       );
 
       shaped = {
-        patient: buildProfile(summary.patient, { email: session.email }, insurance),
+        patient: buildProfile(
+          summary.patient,
+          {
+            email: session?.email,
+            orgName: session?.orgName,
+            hospitalName: session?.tenant?.name || session?.orgName,
+          },
+          insurance,
+        ),
         appointments: buildAppointments(preRequests, doctorsById, summary.appointments || []),
         visits: buildVisits(bundles, bedsById, preRequests),
         bills, documents, billingSections, docIndex,
         notifications: buildNotifications(preRequests),
-        raw: { bundles, preRequests, doctorsById, bedsById, servicesById, insurance, appointments: summary.appointments || [] },
+        specialties: summary.specialties || session?.tenant?.specialties || [],
+        raw: { bundles, preRequests, doctorsById, bedsById, servicesById, insurance, appointments: summary.appointments || [], specialties: summary.specialties || session?.tenant?.specialties || [] },
       };
     } catch (err) {
       // Fallback path, ported verbatim: assemble the same shape from the
@@ -95,12 +104,21 @@ export function PatientStoreProvider({ children }) {
       );
 
       shaped = {
-        patient: buildProfile(me.patient || {}, me.user || {}, insurance),
+        patient: buildProfile(
+          me.patient || {},
+          {
+            ...(me.user || {}),
+            orgName: session?.orgName || me.tenant?.name,
+            hospitalName: session?.tenant?.name || session?.orgName || me.tenant?.name,
+          },
+          insurance,
+        ),
         appointments: buildAppointments(preRequests, doctorsById, []),
         visits: buildVisits(bundles, bedsById, preRequests),
         bills, documents, billingSections, docIndex,
         notifications: buildNotifications(preRequests),
-        raw: { bundles, preRequests, doctorsById, bedsById, servicesById, insurance },
+        specialties: session?.tenant?.specialties || [],
+        raw: { bundles, preRequests, doctorsById, bedsById, servicesById, insurance, specialties: session?.tenant?.specialties || [] },
       };
     }
 
@@ -125,7 +143,7 @@ export function PatientStoreProvider({ children }) {
     const payload = {
       patient_id: state.patient.patientId,
       department: data.department,
-      visit_type: ['Admit', 'Emergency', 'Consultation'].includes(data.type) ? data.type : 'Consultation',
+      visit_type: ['Admit', 'Critical', 'Consultation'].includes(data.type) ? data.type : 'Consultation',
       requested_date: data.date || undefined,
       requested_time: data.time || undefined,
     };
@@ -172,6 +190,12 @@ export function PatientStoreProvider({ children }) {
       valid_from: fields.validFrom || new Date().toISOString().split('T')[0],
       valid_to: fields.validTo || new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
       coverage_limit: fields.coverage || 0,
+      copay_percentage:
+        fields.copayPercentage !== undefined
+          ? Number(fields.copayPercentage)
+          : existing.copayPercentage !== undefined
+            ? Number(existing.copayPercentage)
+            : 0,
       // Whatever the patient already uploaded survives a save that does not
       // explicitly replace it.
       card_front_url: fields.cardFrontUrl !== undefined ? fields.cardFrontUrl : existing.cardFrontUrl || null,
@@ -201,6 +225,7 @@ export function PatientStoreProvider({ children }) {
     documents: state.documents,
     billingSections: state.billingSections,
     notifications: state.notifications,
+    specialties: state.specialties || session?.tenant?.specialties || [],
     raw: state.raw,
     doctors: state.raw ? Object.values(state.raw.doctorsById) : [],
     upcomingAppointments: state.appointments
@@ -214,7 +239,7 @@ export function PatientStoreProvider({ children }) {
     updateProfile,
     updateInsurance,
     payBill,
-  }), [loaded, state, refresh, addAppointment, cancelAppointment, updateProfile, updateInsurance, payBill]);
+  }), [loaded, state, session, refresh, addAppointment, cancelAppointment, updateProfile, updateInsurance, payBill]);
 
   return <PatientStoreContext.Provider value={value}>{children}</PatientStoreContext.Provider>;
 }

@@ -30,6 +30,7 @@ router.post(
 router.get('/me', requireSession, controller.me);
 router.get('/entitlements', requireSession, controller.entitlements);
 router.get('/demo-accounts', controller.demoAccounts);
+router.put('/password', requireSession, controller.changePassword);
 router.post('/logout', requireSession, controller.logout);
 
 module.exports = router;

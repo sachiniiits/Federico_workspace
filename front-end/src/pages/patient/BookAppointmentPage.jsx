@@ -3,6 +3,7 @@
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { usePatientStore } from './usePatientStore.js';
+import { useSession } from '../../auth/useSession.js';
 import { useDocumentTitle } from '../../hooks/useDocumentTitle.js';
 import { api } from '../../api/index.js';
 import { toast } from '../../components/feedback/feedback.js';
@@ -14,6 +15,9 @@ import {
   DUTY_END,
   DUTY_HOURS_LABEL,
   TIME_WINDOWS,
+  MAX_ADVANCE_BOOKING_DAYS,
+  getBookingDateBounds,
+  validateBookingDateString,
   windowFor,
   dutyHoursError,
   formatSlotDate,
@@ -41,7 +45,19 @@ export default function BookAppointmentPage() {
   usePageStyles(patientBookAppointmentCss);
   useDocumentTitle('Book Appointment – Federico Cloud');
   const navigate = useNavigate();
-  const { profile, doctors, addAppointment } = usePatientStore();
+  const { profile, doctors, specialties, addAppointment } = usePatientStore();
+  const { tenant } = useSession();
+
+  // Organization-scoped clinical departments
+  const orgDepartments = useMemo(() => {
+    if (specialties && specialties.length > 0) return specialties;
+    if (tenant?.specialties && tenant.specialties.length > 0) return tenant.specialties;
+    return Array.from(
+      new Set((doctors || []).map((d) => (d.specialization || d.department || '').trim()).filter(Boolean)),
+    ).sort((a, b) => a.localeCompare(b));
+  }, [specialties, tenant, doctors]);
+
+  const dateBounds = useMemo(() => getBookingDateBounds(TODAY), []);
 
   // The time panel's caption keeps its default until the date or department
   // actually changes.
@@ -58,24 +74,43 @@ export default function BookAppointmentPage() {
   const [booked, setBooked] = useState(false);
   const [note, setNote] = useState('');
 
-  const deptDoctors = useMemo(() => {
-    if (!selectedDept || selectedDept === 'none') return [];
+  const matchingDoctors = useMemo(() => {
+    const orgDoctors = doctors || [];
+    if (!selectedDept || selectedDept === 'none') {
+      if (orgDepartments.length > 0) {
+        const allowed = new Set(orgDepartments.map((s) => s.toLowerCase()));
+        const filtered = orgDoctors.filter((d) => {
+          const spec = (d.specialization || '').toLowerCase();
+          const dept = (d.department || '').toLowerCase();
+          return allowed.has(spec) || allowed.has(dept);
+        });
+        return filtered.length > 0 ? filtered : orgDoctors;
+      }
+      return orgDoctors;
+    }
     const target = selectedDept.toLowerCase();
-    return doctors.filter((d) => {
+    return orgDoctors.filter((d) => {
       const docDept = (d.department || '').toLowerCase();
       const docSpec = (d.specialization || '').toLowerCase();
       return (
         docDept === target || docSpec === target || docSpec.includes(target) || docDept.includes(target)
       );
     });
-  }, [doctors, selectedDept]);
+  }, [doctors, selectedDept, orgDepartments]);
 
   function onDepartmentChange(value) {
     setSelectedDept(value || null);
     setErrors((e) => ({ ...e, dept: undefined }));
-    // updateDoctorOptions() resets the doctor whenever the department changes.
-    setSelectedDoctorId(null);
-    setSelectedDoctorName('Any Specialist');
+    if (selectedDoctorId) {
+      const currentDoc = (doctors || []).find((d) => d.doctor_id === selectedDoctorId);
+      const target = (value || '').toLowerCase();
+      const docDept = (currentDoc?.department || '').toLowerCase();
+      const docSpec = (currentDoc?.specialization || '').toLowerCase();
+      if (!target || !(docDept === target || docSpec === target || docSpec.includes(target) || docDept.includes(target))) {
+        setSelectedDoctorId(null);
+        setSelectedDoctorName('Any Specialist');
+      }
+    }
     setSlotMetaTouched(true);
   }
 
@@ -83,8 +118,18 @@ export default function BookAppointmentPage() {
     const id = value ? Number(value) : null;
     setSelectedDoctorId(id);
     if (id) {
-      const doc = doctors.find((d) => d.doctor_id === id);
-      setSelectedDoctorName(doc ? 'Dr. ' + doc.name.replace(/^Dr\.\s*/i, '') : 'Any Specialist');
+      const doc = (doctors || []).find((d) => d.doctor_id === id);
+      setSelectedDoctorName(doc ? (doc.name.startsWith('Dr.') ? doc.name : 'Dr. ' + doc.name) : 'Any Specialist');
+      // If no department was selected yet, auto-select the doctor's department
+      if (!selectedDept && doc) {
+        const docDept = doc.specialization || doc.department;
+        const matched = orgDepartments.find((d) => d.toLowerCase() === (docDept || '').toLowerCase()) || docDept;
+        if (matched) {
+          setSelectedDept(matched);
+          setErrors((e) => ({ ...e, dept: undefined }));
+          setSlotMetaTouched(true);
+        }
+      }
     } else {
       setSelectedDoctorName('Any Specialist');
     }
@@ -140,8 +185,8 @@ export default function BookAppointmentPage() {
   function validateForm() {
     const next = {};
     if (!selectedDept || selectedDept === 'none') next.dept = 'Please select a department.';
-    if (!selectedDate) next.date = 'Please select a preferred date.';
-    else if (selectedDate < TODAY) next.date = 'Please choose today or a future date.';
+    const dateError = validateBookingDateString(selectedDate, dateBounds);
+    if (dateError) next.date = dateError;
     if (!selectedTime) next.time = 'Please select a preferred time.';
     if (selectedDate && selectedTime && !next.date) {
       const dutyError = dutyHoursError(selectedDate, selectedTime);
@@ -272,6 +317,7 @@ export default function BookAppointmentPage() {
                 </label>
                 <DepartmentSelect
                   id="department"
+                  departments={orgDepartments}
                   doctors={doctors}
                   value={selectedDept ?? ''}
                   onChange={onDepartmentChange}
@@ -290,11 +336,11 @@ export default function BookAppointmentPage() {
                   onChange={(e) => onDoctorChange(e.target.value)}
                 >
                   <option value="">Any Available Specialist</option>
-                  {deptDoctors.map((doc) => {
+                  {matchingDoctors.map((doc) => {
                     const docTitle = doc.name.startsWith('Dr.') ? doc.name : 'Dr. ' + doc.name;
                     return (
                       <option key={doc.doctor_id} value={doc.doctor_id}>
-                        {docTitle} ({doc.qualification || doc.specialization || selectedDept})
+                        {docTitle} ({doc.specialization || doc.department || selectedDept || 'Specialist'})
                       </option>
                     );
                   })}
@@ -308,10 +354,14 @@ export default function BookAppointmentPage() {
                 <input
                   id="appointment-date"
                   type="date"
-                  min={TODAY}
+                  min={dateBounds.minDate}
+                  max={dateBounds.maxDate}
                   value={selectedDate ?? ''}
                   onChange={(e) => onDateChange(e.target.value)}
                 />
+                <div className="form-hint" style={{ fontSize: 12, color: 'var(--color-muted-fg)', marginTop: 4 }}>
+                  Appointments can be scheduled up to {MAX_ADVANCE_BOOKING_DAYS} days in advance.
+                </div>
                 <span className={'field-error' + (errors.date ? '' : ' hidden')} id="error-date">
                   {errors.date || DEFAULT_ERRORS.date}
                 </span>

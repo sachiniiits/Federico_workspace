@@ -15,10 +15,10 @@ const STATUS_MAP = {
 
 export function StatusBadge({ status }) {
   const s = String(status || '').toLowerCase();
-  if (s === 'emergency') {
+  if (s === 'critical') {
     return (
       <span className="status overdue" style={{ background: '#fee2e2', color: '#b91c1c', fontWeight: 700 }}>
-        Emergency
+        Critical
       </span>
     );
   }
